@@ -1,0 +1,5 @@
+1. Make sure check cloudinary website for image uploade if need so buy subsciption. 
+    cloud_name = dclelz8ds
+    api_key = 755836139361584
+    api_secret = Ki5JoMVlEUVjxfZr0EJj4JvOy3A
+    secure = True

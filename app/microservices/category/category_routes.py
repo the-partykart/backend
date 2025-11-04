@@ -471,7 +471,7 @@ async def get_all_sub_category_handler(
         if result is None:
             return JSONResponse(content={
                 "status":1,
-                "data":"Empty"
+                "data":[]
             })
         
         else:

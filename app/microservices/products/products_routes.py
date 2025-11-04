@@ -58,7 +58,7 @@ cloudinary.config(
 )
 
 
-@router_v1.post("/")
+@router_v1.post("/create")
 async def create_product_handler(
     background_tasks: BackgroundTasks,
     product_name: str = Form(...),
@@ -147,7 +147,7 @@ async def create_product_handler(
         raise HTTPException(status_code=500, detail="Failed to create product")
 
 
-@router_v1.get("/")
+@router_v1.get("/all")
 async def get_all_product_handler(
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),

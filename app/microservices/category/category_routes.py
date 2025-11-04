@@ -110,7 +110,7 @@ async def create_category_handler(
         raise HTTPException(status_code=500, detail=" Failed to create category")
         
 
-@router_v1.get("/all/")
+@router_v1.get("/all")
 async def get_all_category_handler(
     background_tasks: BackgroundTasks,
     # user: Users = Depends(get_current_user),

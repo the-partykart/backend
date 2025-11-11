@@ -233,21 +233,21 @@ class BuyProducts(Base):
     canceled_at = Column(DateTime, nullable=True)
 
 
-class OrderAlert(Base):
-    __tablename__ = "pk_order_alert"
+# class OrderAlert(Base):
+#     __tablename__ = "pk_order_alert"
 
-    order_alert_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    buy_product_id = Column(Integer, nullable=False)
-    order_id = Column(BigInteger, nullable=False)
-    total_amount = Column(BigInteger, nullable=False)
-    delivery_status = Column(String(100), nullable=False)
-    created_by = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_by = Column(Integer, nullable=True)
-    updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
-    is_canceled = Column(Boolean, default=False, nullable=False)
-    canceled_by = Column(Integer, nullable=True)
-    canceled_at = Column(DateTime, nullable=True)
+#     order_alert_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+#     buy_product_id = Column(Integer, nullable=False)
+#     order_id = Column(BigInteger, nullable=False)
+#     total_amount = Column(BigInteger, nullable=False)
+#     delivery_status = Column(String(100), nullable=False)
+#     created_by = Column(Integer, nullable=True)
+#     created_at = Column(DateTime, default=func.now(), nullable=False)
+#     updated_by = Column(Integer, nullable=True)
+#     updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
+#     is_canceled = Column(Boolean, default=False, nullable=False)
+#     canceled_by = Column(Integer, nullable=True)
+#     canceled_at = Column(DateTime, nullable=True)
 
 
 

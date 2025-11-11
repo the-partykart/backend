@@ -5,6 +5,7 @@
 from typing import List, Optional
 from fastapi import FastAPI, Depends, BackgroundTasks, File, Form, Query, UploadFile, status
 from fastapi import HTTPException, APIRouter
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta, timezone
 
@@ -287,7 +288,9 @@ async def get_product_detail_handler(
             "updated_at": product.updated_at.isoformat() if product.updated_at else None,
         }
 
-        return JSONResponse(content={"status": 1, "data": data}, status_code=200)
+        # return JSONResponse(content={"status": 1, "data": data}, status_code=200)
+        json_data = jsonable_encoder({"status": 1, "data": data})
+        return JSONResponse(content=json_data, status_code=200)
 
     except HTTPException as http_exc:
         raise http_exc

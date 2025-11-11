@@ -346,7 +346,7 @@ async def remove_cart_db(
 #         return data
 
 #     except Exception as e:
-#         await log_async(
+#         log_async(
 #             background_tasks,
 #             f"[DB][GET_ALL_product] Error in Fetch All product: {str(e)}",
 #             "error",

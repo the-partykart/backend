@@ -14,11 +14,11 @@ import uvicorn
 
 from app.db.services.category_repository import get_category_db, get_sub_category_db
 from app.db.services.products_repository import check_product_name_db
-from app.microservices.common_function import get_current_role, get_current_user, upload_image
+from app.microservices.common_function import get_current_role, get_current_user, object_to_dict, upload_image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.db_session import get_async_session
-from app.db.models.db_base import Courses, DashBoardImage, Users
+from app.db.models.db_base import Courses, DashBoardImage, Products, Users
 from app.microservices.products.products_schema import CourseCreate, CourseResponse, CreateProduct, Updateproduct
 from app.microservices.products.products_service import check_product_service, create_product_service, delete_product_service, get_all_product_service, get_product_category_service, get_product_service, update_product_service
 # from app.microservices.sectors.sectors_service import check_sector_service
@@ -190,7 +190,7 @@ async def get_all_product_handler(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[product][GET_ALL_product] Error: Failed to Fetch all product. Exception: {e}",
             level="error",
@@ -240,6 +240,68 @@ async def get_product_handler(
         raise HTTPException(status_code=500, detail="Failed to Fetch product.")
     
 
+
+@router_v1.get("/details/{product_id}")
+async def get_product_detail_handler(
+    product_id: int,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        # Fetch product by ID
+        stmt = select(Products).where(Products.product_id == product_id, Products.is_deleted == 0)
+        result = await session.execute(stmt)
+        product = result.scalars().first()
+
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Parse product images (if stored as JSON string)
+
+
+        # product_images = []
+        # if product.product_image:
+        #     try:
+        #         clean_str = product.product_image.replace("\n", "").strip()
+        #         product_images = json.loads(clean_str)
+        #     except Exception:
+        #         product_images = [product.product_image] if isinstance(product.product_image, str) else []
+
+        # Prepare response data
+        data = {
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "product_price": product.product_price,
+            "product_description": product.product_description,
+            "sub_category_id": product.sub_category_id,
+            "stock": product.stock,
+            "weight": product.weight,
+            "length": product.length,
+            "width": product.width,
+            "height": product.height,
+            "origin_location": product.origin_location,
+            "product_images": product.product_image,
+            "created_by": product.created_by,
+            "created_at": product.created_at.isoformat() if product.created_at else None,
+            "updated_by": product.updated_by,
+            "updated_at": product.updated_at.isoformat() if product.updated_at else None,
+        }
+
+        return JSONResponse(content={"status": 1, "data": data}, status_code=200)
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        log_async(
+            background_tasks=background_tasks,
+            message=f"[product][DETAIL_product] Error fetching product {product_id}: {e}",
+            level="error",
+            always_sync=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to fetch product details")
+
+
+
 @router_v1.get("/sub_category/{sub_category_id}")
 async def get_product_sub_category_handler(
     sub_category_id: int,
@@ -275,7 +337,7 @@ async def get_product_sub_category_handler(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks,
             f"[product][GET_product_sub_category] Error: Failed to Fetch products. Exception: {e}",
             "error",
@@ -283,87 +345,133 @@ async def get_product_sub_category_handler(
         )
         raise HTTPException(status_code=500, detail="Failed to Fetch product.")
 
+
+
+
+
 @router_v1.patch("/update/{product_id}")
 async def update_product_handler(
-    product_id : int,
+    product_id: int,
     background_tasks: BackgroundTasks,
-    product_name : Optional[str] = Form(None),
-    product_price : Optional[int] = Form(None),
-    product_description : Optional[str] = Form(None),
+    product_name: Optional[str] = Form(None),
+    product_price: Optional[int] = Form(None),
+    product_description: Optional[str] = Form(None),
     sub_category_id: Optional[int] = Form(None),
-    file: UploadFile = File(None),
+    stock: Optional[int] = Form(None),
+    files: List[UploadFile] = File(None),  # new uploaded images
+    existing_images: Optional[str] = Form("[]"),  # JSON string of kept old images
+    weight: Optional[float] = Form(None),
+    length: Optional[float] = Form(None),
+    width: Optional[float] = Form(None),
+    height: Optional[float] = Form(None),
+    origin_location: Optional[str] = Form(None),
+    session: AsyncSession = Depends(get_async_session),
     user: Users = Depends(get_current_user),
-    # user = Users (user_id=1),
-    session : AsyncSession = Depends(get_async_session),
 ):
+    import json
+
     try:
         user_id = user.user_id
-        role_result = await get_current_role(
-            user_id = user_id,
+
+        # --- Validate role ---
+        await get_current_role(
+            user_id=user_id,
             background_tasks=background_tasks,
             session=session,
         )
 
-        if file is None:
-            product_image = None
-
-        else:
-            product_image = file
-        
-        check_product = await check_product_service(
+        # --- Check product existence ---
+        product_data = await check_product_service(
             product_id=product_id,
             session=session,
             background_tasks=background_tasks,
         )
-        current_product_name = check_product.product_name
+        if not product_data:
+            raise HTTPException(status_code=404, detail="Product not found")
 
-        if product_name:
-            check_product_name = await check_product_name_db(
-                product_name = product_name,
+        current_product_name = product_data.product_name
+
+        # --- Check for duplicate name ---
+        if product_name and product_name != current_product_name:
+            if await check_product_name_db(
+                product_name=product_name,
+                session=session,
+                background_tasks=background_tasks,
+            ):
+                raise HTTPException(status_code=409, detail="Product name already exists")
+
+        # --- Validate subcategory ---
+        if sub_category_id:
+            check_sub_category_id = await get_sub_category_db(
+                sub_category_id=sub_category_id,
                 session=session,
                 background_tasks=background_tasks,
             )
+            if not check_sub_category_id or check_sub_category_id.is_deleted == 1:
+                sub_category_id = None
 
-            if check_product_name:
-                raise HTTPException(
-                    detail="Product name Already Used",
-                    status_code=status.HTTP_409_CONFLICT
-                )
+        # --- Parse existing images (from frontend) ---
+        try:
+            if isinstance(existing_images, str):
+                existing_images_list = json.loads(existing_images)
+            else:
+                existing_images_list = existing_images
+        except Exception:
+            existing_images_list = []
         
+        if not isinstance(existing_images_list, list):
+            existing_images_list = []
+
+        # --- Handle new image uploads ---
+        new_image_urls = []
+        if files:
+            for file in files:
+                upload_result = await upload_image(file=file, background_tasks=background_tasks)
+                if upload_result:
+                    new_image_urls.append(upload_result)
+
+        # ✅ Combine existing + new uploaded
+        updated_images = existing_images_list + new_image_urls
+
+        # --- Call service layer ---
         result = await update_product_service(
             product_id=product_id,
             product_name=product_name,
-            product_image=product_image,
             product_price=product_price,
-            product_description =product_description,
-            sub_category_id = sub_category_id,
-            user_id = user.user_id,
+            product_description=product_description,
+            sub_category_id=sub_category_id,
+            stock=stock,
+            product_images=updated_images,  # ✅ updated list
+            weight=weight,
+            length=length,
+            width=width,
+            height=height,
+            origin_location=origin_location,
+            user_id=user_id,
             current_product_name=current_product_name,
             session=session,
             background_tasks=background_tasks,
         )
 
-        if result:
-            return JSONResponse(content={
-                "status":1,
-                "data":result
-            })
-        
+        if result["status"] == 1:
+            return JSONResponse(content=result, status_code=200)
         else:
-            raise HTTPException(status_code=500, detail="Failed to Update product.")
+            raise HTTPException(status_code=500, detail="Failed to update product")
 
     except HTTPException as http_exc:
         raise http_exc
-
     except Exception as e:
         log_async(
             background_tasks=background_tasks,
-            message=f"[product][UPDATE_product] Error: Failed to Update product. Exception: {e}",
+            message=f"[product][UPDATE_product] Error updating product {product_id}: {e}",
             level="error",
-            always_sync=True
+            always_sync=True,
         )
-        raise HTTPException(status_code=500, detail="Failed to Update product.")
-    
+        raise HTTPException(status_code=500, detail="Failed to update product")
+
+
+
+
 
 @router_v1.put("/delete/{product_id}")
 async def delete_product_handler(

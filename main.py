@@ -452,6 +452,7 @@ from app.microservices.offers.offers_routes import router_v1 as offers_router
 from app.microservices.promocodes.promocodes_routes import router_v1 as promocodes_router
 from app.microservices.buyed_product.buyed_routes import router_v1 as buyed_router
 from app.microservices.order_alert.order_alert_routes import router_v1 as order_alert_router
+from app.microservices.order_place.order_place_routes import router_v1 as place_order
 
 # ✅ Import DB settings
 from config.config import settings
@@ -462,16 +463,16 @@ engine = create_async_engine(DB_URL, echo=False, pool_pre_ping=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async def keep_db_alive():
-        while True:
-            try:
-                async with engine.connect() as conn:
-                    await conn.execute(text("SELECT 1"))
-                    print("✅ [Keep-Alive] DB ping successful.")
-            except Exception as e:
-                print(f"❌ [Keep-Alive] DB ping failed: {e}")
-            await asyncio.sleep(300)
-    asyncio.create_task(keep_db_alive())
+    # async def keep_db_alive():
+    #     while True:
+    #         try:
+    #             async with engine.connect() as conn:
+    #                 await conn.execute(text("SELECT 1"))
+    #                 print("✅ [Keep-Alive] DB ping successful.")
+    #         except Exception as e:
+    #             print(f"❌ [Keep-Alive] DB ping failed: {e}")
+    #         await asyncio.sleep(300)
+    # asyncio.create_task(keep_db_alive())
     yield
 
 app = FastAPI(
@@ -501,6 +502,7 @@ app.include_router(offers_router)
 app.include_router(promocodes_router)
 app.include_router(buyed_router)
 app.include_router(order_alert_router)
+app.include_router(place_order)
 
 @app.get("/")
 def root():

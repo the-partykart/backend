@@ -52,16 +52,16 @@ async def buy_product_db(
         result = await session.refresh(new_buy_product)
         if new_buy_product.buy_product_id:
             new_buy_product_id = new_buy_product.buy_product_id
-            log_entry_result = await log_entry(
-                background_tasks=background_tasks,
-                session=session,
-                log_name=f"product: buy created",
-                log_description=f"product {product_id} Buy by user_id {user_id} order Id{order_id}",
-                previous_value=None,
-                updated_value=product_id,
-                changed_by=user_id)
-            if log_entry_result:
-                return new_buy_product_id
+            # log_entry_result = await log_entry(
+            #     background_tasks=background_tasks,
+            #     session=session,
+            #     log_name=f"product: buy created",
+            #     log_description=f"product {product_id} Buy by user_id {user_id} order Id{order_id}",
+            #     previous_value=None,
+            #     updated_value=product_id,
+            #     changed_by=user_id)
+            # if log_entry_result:
+            #     return new_buy_product_id
             return new_buy_product_id
         else:
             return False
@@ -128,7 +128,7 @@ async def get_all_buy_product_db(
         return data
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks,
             f"[DB][GET_ALL_product] Error in Fetch All product: {str(e)}",
             "error",

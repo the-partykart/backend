@@ -66,7 +66,7 @@ async def add_cart_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[cart_SERVICE][CREATE_cart_SERVICE] Error in create cart Service: Exception: {e}",
             level="error",
@@ -243,7 +243,7 @@ async def update_cart_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[cart_SERVICE][CREATE_cart_SERVICE] Error in create cart Service: Exception: {e}",
             level="error",
@@ -278,7 +278,7 @@ async def remove_cart_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[cart_SERVICE][DELETE_cart_SERVICE] Error in Delete cart Service: Exception: {e}",
             level="error",

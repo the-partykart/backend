@@ -67,7 +67,7 @@ async def create_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[category_SERVICE][CREATE_category_SERVICE] Error in create category Service: Exception: {e}",
             level="error",
@@ -196,7 +196,7 @@ async def update_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[category_SERVICE][CREATE_category_SERVICE] Error in create category Service: Exception: {e}",
             level="error",
@@ -233,7 +233,7 @@ async def delete_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[category_SERVICE][DELETE_category_SERVICE] Error in Delete category Service: Exception: {e}",
             level="error",
@@ -336,7 +336,7 @@ async def create_sub_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[sub_category_SERVICE][CREATE_sub_category_SERVICE] Error in create sub_category Service: Exception: {e}",
             level="error",
@@ -496,7 +496,7 @@ async def update_sub_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[sub_category_SERVICE][CREATE_sub_category_SERVICE] Error in update sub_category Service: Exception: {e}",
             level="error",
@@ -535,7 +535,7 @@ async def delete_sub_category_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[sub_category_SERVICE][DELETE_sub_category_SERVICE] Error in Delete sub_category Service: Exception: {e}",
             level="error",

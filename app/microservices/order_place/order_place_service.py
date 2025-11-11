@@ -28,7 +28,152 @@ async def generate_order_id(user_id: int) -> str:
     
     return order_id
 
+# #--------------------------------------------------------------------------------------------------------------
 
+
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from fastapi import HTTPException
+from app.db.models.db_base import Order, OrderItem, Products, OrderAlert
+
+
+
+async def create_order(data, user_id: int, session: AsyncSession):
+    total_amount = 0
+    items_data = []
+
+    # 1️⃣ Calculate total based on backend product prices
+    for item in data.items:
+        product = await session.scalar(
+            select(Products).where(Products.product_id == item.product_id, Products.is_deleted == False)
+        )
+
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+
+        if product.stock < item.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for {product.product_name}")
+
+        # ✅ Use correct field name `product_price`
+        subtotal = float(product.product_price) * item.quantity
+        total_amount += subtotal
+
+        items_data.append({
+            "product": product,
+            "product_name": product.product_name,
+            "quantity": item.quantity,
+            "price_per_unit": product.product_price,
+            "subtotal": subtotal
+        })
+
+    # 2️⃣ Create the order
+    order = Order(
+        user_id=user_id,
+        total_amount=total_amount,
+        discount_amount=0,
+        final_amount=total_amount,  # you can adjust later for promo
+        payment_method=data.payment_method,
+        payment_status="Pending",
+        delivery_status="Pending",
+        shipping_address=data.shipping_address,
+    )
+    session.add(order)
+    await session.flush()  # ✅ ensures order_id is available
+
+    # 3️⃣ Add each order item & update product stock
+    for item_data in items_data:
+        session.add(OrderItem(
+            order_id=order.order_id,
+            product_id=item_data["product"].product_id,
+            product_name=item_data["product_name"],
+            quantity=item_data["quantity"],
+            price_per_unit=item_data["price_per_unit"],
+            subtotal=item_data["subtotal"]
+        ))
+
+        # ✅ Reduce stock in backend
+        item_data["product"].stock -= item_data["quantity"]
+
+    # 4️⃣ Log initial order alert
+    session.add(OrderAlert(
+        order_id=order.order_id,
+        alert_type="ORDER_PLACED",
+        alert_message=f"Order {order.order_id} placed successfully."
+    ))
+
+    await session.commit()
+    await session.refresh(order)
+
+    return order
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# #--------------------------------------------------------------------------------------------------------------
 
 # Validation
 async def buy_product_service(

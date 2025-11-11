@@ -7,6 +7,10 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.inspection import inspect
 from datetime import datetime
 
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from jinja2 import Template
 
 from asyncio import log
 import configparser
@@ -31,6 +35,7 @@ from cloudinary.utils import cloudinary_url
 from config.config import settings
 
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -47,6 +52,9 @@ config.read(config_file_path)
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
+
+GMAIL_USER = settings.GMAIL_USER
+GMAIL_APP_PASSWORD = settings.GMAIL_APP_PASSWORD
 
 # Configuration       
 cloudinary.config( 
@@ -181,7 +189,7 @@ async def get_current_role(
             return role
         
         else:
-           raise HTTPException(
+            raise HTTPException(
                 detail={"message":"Unauthorized User"},
                 status_code=status.HTTP_401_UNAUTHORIZED
             ) 
@@ -263,10 +271,43 @@ async def upload_image(file, background_tasks: BackgroundTasks):
         return blob_url
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[upload_image] Error uploading to Azure Blob: {e}",
             level="error",
             always_sync=True
         )
         return None
+    
+
+async def send_templated_email(to_email: str, subject: str, template_str: str, context: dict):
+    """
+    Send an email using an HTML template.
+    
+    Args:
+        to_email: Recipient email address.
+        subject: Email subject line.
+        template_str: HTML or text template with Jinja2-style placeholders.
+        context: Dictionary of variables for the template.
+    """
+    # Render HTML body from template
+    html_body = Template(template_str).render(**context)
+
+    # Create a MIME email
+    msg = MIMEMultipart("alternative")
+    msg["From"] = GMAIL_USER
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html_body, "html"))
+
+    # Send via Gmail SMTP
+    await aiosmtplib.send(
+        msg,
+        hostname="smtp.gmail.com",
+        port=587,
+        start_tls=True,
+        username=GMAIL_USER,
+        password=GMAIL_APP_PASSWORD,
+    )
+
+    

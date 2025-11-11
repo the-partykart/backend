@@ -65,7 +65,7 @@ async def check_phone_no_service(
         return data
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[USER_SERVICE][check_username] Error in User Login Service: Exception: {e}",
             level="error",

@@ -187,7 +187,7 @@ async def get_all_product_db(
         return data, total_count
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks,
             f"[DB][GET_ALL_product] Error in Fetch All product: {str(e)}",
             "error",
@@ -275,7 +275,7 @@ async def get_product_sub_category_db(
         return products, total_count
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks,
             f"[DB][GET_product_sub_category] Error in Fetch product: {str(e)}",
             "error",
@@ -284,49 +284,76 @@ async def get_product_sub_category_db(
         return [], 0
     
     
+
 async def update_product_db(
-        product_id ,
-        product_name,
-        product_image,
-        product_price,
-        product_description,
-        sub_category_id,
-        user_id : int,
-        current_product_name: str,
-        session: AsyncSession,
-        background_tasks : BackgroundTasks,
+    product_id: int,
+    product_name: Optional[str],
+    product_price: Optional[int],
+    product_description: Optional[str],
+    sub_category_id: Optional[int],
+    stock: Optional[int],
+    product_images: Optional[List[str]],  # ✅ Now expects list of URLs
+    weight: Optional[float],
+    length: Optional[float],
+    width: Optional[float],
+    height: Optional[float],
+    origin_location: Optional[str],
+    current_product_name: str,
+    user_id: int,
+    session: AsyncSession,
+    background_tasks: BackgroundTasks,
 ):
     try:
         data = {}
+
+        # --- Only add changed fields ---
         if product_name:
             data["product_name"] = product_name
-        if product_price:
+        if product_price is not None:
             data["product_price"] = product_price
         if product_description:
             data["product_description"] = product_description
-        if product_image:
-            data["product_image"] = product_image
         if sub_category_id:
             data["sub_category_id"] = sub_category_id
+        if stock is not None:
+            data["stock"] = stock
+        if weight is not None:
+            data["weight"] = weight
+        if length is not None:
+            data["length"] = length
+        if width is not None:
+            data["width"] = width
+        if height is not None:
+            data["height"] = height
+        if origin_location:
+            data["origin_location"] = origin_location
+
+        # --- ✅ Handle product images (already processed URLs) ---
+        if product_images is not None:
+            data["product_image"] = product_images
+
         data["updated_by"] = user_id
         data["updated_at"] = func.now()
 
-        stmt = update(Products).where(Products.product_id==product_id).values(**data)
+        stmt = (
+            update(Products)
+            .where(Products.product_id == product_id)
+            .values(**data)
+        )
         result = await session.execute(stmt)
         await session.commit()
-        update_result = result.rowcount
-        if update_result==1:
-            log_entry_result = await log_entry(
-                background_tasks=background_tasks,
-                session=session,
-                log_name="product Updated",
-                log_description=f"product Updated by user_id {user_id}",
-                previous_value=current_product_name,
-                updated_value=data,
-                changed_by=user_id
-                )
-            if log_entry_result:
-                return True
+
+        # --- Log successful update ---
+        if result.rowcount == 1:
+            # log_entry(
+            #     background_tasks=background_tasks,
+            #     session=session,
+            #     log_name="Product Updated",
+            #     log_description=f"Product updated by user_id {user_id}",
+            #     previous_value=current_product_name,
+            #     updated_value=data,
+            #     changed_by=user_id,
+            # )
             return True
         else:
             return False
@@ -334,13 +361,10 @@ async def update_product_db(
     except Exception as e:
         log_async(
             background_tasks,
-            f"[DB][UPDATE_product] Error in Updating product {current_product_name}: {str(e)}",
+              f"[DB][UPDATE_product] Error updating product {current_product_name}: {e}",
             "error",
-            always_sync=True
+            always_sync=True,
         )
-        # raise HTTPException(
-        #     detail=f"Database error Error Creating product: {e}")
-
         return False
     
 

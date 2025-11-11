@@ -72,7 +72,7 @@ async def create_offer_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[offer_SERVICE][CREATE_offer_SERVICE] Error in create offer Service: Exception: {e}",
             level="error",
@@ -214,7 +214,7 @@ async def update_offer_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[offer_SERVICE][CREATE_offer_SERVICE] Error in create offer Service: Exception: {e}",
             level="error",
@@ -251,7 +251,7 @@ async def delete_offer_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[offer_SERVICE][DELETE_offer_SERVICE] Error in Delete offer Service: Exception: {e}",
             level="error",

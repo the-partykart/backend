@@ -73,7 +73,7 @@ async def create_promocode_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[promocode_SERVICE][CREATE_promocode_SERVICE] Error in create promocode Service: Exception: {e}",
             level="error",
@@ -215,7 +215,7 @@ async def update_promocode_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[promocode_SERVICE][CREATE_promocode_SERVICE] Error in create promocode Service: Exception: {e}",
             level="error",
@@ -252,7 +252,7 @@ async def delete_promocode_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[promocode_SERVICE][DELETE_promocode_SERVICE] Error in Delete promocode Service: Exception: {e}",
             level="error",

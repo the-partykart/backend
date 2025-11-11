@@ -96,4 +96,4 @@ async def get_user_role_from_db(
 
     except Exception as e:
         return False
-        return False
+    

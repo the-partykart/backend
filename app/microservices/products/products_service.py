@@ -82,7 +82,7 @@ async def check_product_service(
 #         raise http_exc
 
 #     except Exception as e:
-#         await log_async(
+#         log_async(
 #             background_tasks=background_tasks,
 #             message=f"[product_SERVICE][CREATE_product_SERVICE] Error in create product Service: Exception: {e}",
 #             level="error",
@@ -141,7 +141,7 @@ async def create_product_service(
             return {"status": 0, "message": "Failed to create product"}
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[product_SERVICE][CREATE_product_SERVICE] Error: {e}",
             level="error",
@@ -170,7 +170,7 @@ async def get_all_product_service(
         return result, total_count
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[product][GET_ALL_product] Service Error: {e}",
             level="error",
@@ -259,52 +259,61 @@ async def get_product_service(
         raise HTTPException(status_code=500, detail=f"Failed to Fetch product.{e}")
 
 
+
 async def update_product_service(
-        product_id,
-        product_name,
-        product_image,
-        product_price,
-        product_description,
-        sub_category_id,
-        user_id,
-        current_product_name,
-        session: AsyncSession,
-        background_tasks: BackgroundTasks,
+    product_id,
+    product_name,
+    product_price,
+    product_description,
+    sub_category_id,
+    stock,
+    product_images,
+    weight,
+    length,
+    width,
+    height,
+    origin_location,
+    user_id,
+    current_product_name,
+    session: AsyncSession,
+    background_tasks: BackgroundTasks,
 ):
     try:
         result = await update_product_db(
-            product_id = product_id,
+            product_id=product_id,
             product_name=product_name,
             product_price=product_price,
-            product_image=product_image,
             product_description=product_description,
-            sub_category_id = sub_category_id,
+            sub_category_id=sub_category_id,
+            stock=stock,
+            product_images=product_images,
+            weight=weight,
+            length=length,
+            width=width,
+            height=height,
+            origin_location=origin_location,
             current_product_name=current_product_name,
-            user_id = user_id,
-            session = session,
-            background_tasks = background_tasks,
+            user_id=user_id,
+            session=session,
+            background_tasks=background_tasks,
         )
 
         if result:
-            return{"status":1,"message":"product Update successfully"}
-        
+            return {"status": 1, "message": "Product updated successfully"}
         else:
-            return False
-        
-    except HTTPException as http_exc:
-        raise http_exc
+            return {"status": 0, "message": "No changes detected or update failed"}
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
-            message=f"[product_SERVICE][CREATE_product_SERVICE] Error in create product Service: Exception: {e}",
+            message=f"[product_SERVICE][UPDATE_product_SERVICE] Error updating product: {e}",
             level="error",
-            always_sync=True
+            always_sync=True,
         )
-        raise HTTPException(
-            status_code=404,
-            detail=f"Error in Create product: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error updating product: {e}")
+
+
+
     
 async def delete_product_service(
     product_id,
@@ -332,7 +341,7 @@ async def delete_product_service(
         raise http_exc
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks=background_tasks,
             message=f"[product_SERVICE][DELETE_product_SERVICE] Error in Delete product Service: Exception: {e}",
             level="error",
@@ -367,7 +376,7 @@ async def get_product_category_service(
         return data, total_count
 
     except Exception as e:
-        await log_async(
+        log_async(
             background_tasks,
             f"[Service][GET_product_category] Error: {e}",
             "error",

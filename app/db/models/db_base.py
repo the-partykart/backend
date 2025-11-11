@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import DECIMAL, BigInteger, Column, Integer, String, ForeignKey, DateTime, Boolean, JSON, Text, create_engine
+from sqlalchemy import DECIMAL, TIMESTAMP, BigInteger, Column, Integer, Numeric, String, ForeignKey, DateTime, Boolean, JSON, Text, create_engine
 from sqlalchemy.sql import func 
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import sessionmaker
@@ -101,6 +101,8 @@ class Products(Base):
 
     # --- Relationships ---
     sub_category = relationship("SubCategary", backref="products")
+    order_items = relationship("OrderItem", back_populates="product")
+
 
     # --- Utility Method ---
     def calculate_volumetric_weight(self):
@@ -308,6 +310,71 @@ class DashBoardImage(Base):
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_by = Column(Integer, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
+
+
+
+###----------------------------------------------------------------------
+
+
+
+# 2️⃣ Orders (placed by user)
+class Order(Base):
+    __tablename__ = "pk_orders"
+
+    order_id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)
+    total_amount = Column(DECIMAL(10, 2), nullable=False)
+    discount_amount = Column(DECIMAL(10, 2), nullable=False, default=0)
+    final_amount = Column(DECIMAL(10, 2), nullable=False)
+    payment_method = Column(String(50), nullable=False)
+    payment_status = Column(String(50), default="Pending")
+    delivery_status = Column(String(50), default="Pending")
+    delivery_tracking_id = Column(String(100))
+    shipping_address = Column(JSON, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, onupdate=func.now())
+
+    # Relationships
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete")
+    alerts = relationship("OrderAlert", back_populates="order", cascade="all, delete")
+
+
+# 3️⃣ Order Items (each product line inside an order)
+class OrderItem(Base):
+    __tablename__ = "pk_order_items"
+
+    order_item_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    order_id = Column(BigInteger, ForeignKey("pk_orders.order_id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(Integer, ForeignKey("pk_products.product_id", ondelete="RESTRICT"), nullable=False)
+    product_name = Column(String(255), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price_per_unit = Column(DECIMAL(10, 2), nullable=False)
+    subtotal = Column(DECIMAL(10, 2), nullable=False)
+    offer_id = Column(Integer, nullable=True)
+    promocode_id = Column(Integer, nullable=True)
+    offer_discount = Column(DECIMAL(10, 2), nullable=False, default=0)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    # Relationships
+    order = relationship("Order", back_populates="items")
+    product = relationship("Products", back_populates="order_items", lazy="joined")
+
+
+
+# 4️⃣ Order Alerts (status changes, delivery updates, etc.)
+class OrderAlert(Base):
+    __tablename__ = "pk_order_alerts"
+
+    alert_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    order_id = Column(BigInteger, ForeignKey("pk_orders.order_id", ondelete="CASCADE"), nullable=False)
+    alert_type = Column(String(50), nullable=False)
+    alert_message = Column(String(255), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    # Relationship
+    order = relationship("Order", back_populates="alerts")
+
+### ------------------------------------------------------------------ 
 
 from app.db.db_session import *
 

@@ -62,15 +62,16 @@ app.add_middleware(
 @router_v1.post("/place-order", status_code=status.HTTP_201_CREATED)
 async def place_order(
     data: OrderCreate,
+    background_tasks : BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
-    user: Users = Depends(get_current_user)
+    user: Users = Depends(get_current_user),
 ):
     """
     ✅ Place an order
     - Calculates total on backend
     - Creates order, order_items, and order_alert
     """
-    order = await create_order(data, user_id=user.user_id, session=session)
+    order = await create_order(data, user_id=user.user_id, session=session,background_tasks=background_tasks)
     return {
         "message": "Order placed successfully",
         "order_id": order.order_id,

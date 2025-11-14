@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.db_base import Users
 from app.db.services.roles_repository import get_user_role_from_db
-from app.utility.logging_utils import log_async
+from app.utility.logging_utils import log_async, log
 
 from config.config import settings
 
@@ -280,34 +280,131 @@ async def upload_image(file, background_tasks: BackgroundTasks):
         return None
     
 
-async def send_templated_email(to_email: str, subject: str, template_str: str, context: dict):
-    """
-    Send an email using an HTML template.
-    
-    Args:
-        to_email: Recipient email address.
-        subject: Email subject line.
-        template_str: HTML or text template with Jinja2-style placeholders.
-        context: Dictionary of variables for the template.
-    """
-    # Render HTML body from template
-    html_body = Template(template_str).render(**context)
+# utils/email_templates.py
+def build_admin_order_email(order, user, items):
+    items_html = "".join(
+        f"""
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">{i+1}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">{item['product_name']}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">{item['quantity']}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">₹{float(item['price_per_unit']):,.2f}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">₹{float(item['subtotal']):,.2f}</td>
+        </tr>
+        """ for i, item in enumerate(items)
+    )
 
-    # Create a MIME email
+    return f"""
+    <div style="font-family:Arial,sans-serif;color:#333;max-width:700px;margin:auto;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden;">
+        
+        <!-- HEADER -->
+        <div style="background-color:#f9f9f9;padding:15px 20px;border-left:6px solid #4CAF50;">
+            <h2 style="margin:0;">🛍️ New Order #{order.order_id}</h2>
+            <p style="margin:5px 0 0 0;">
+                <b>Customer:</b> {getattr(user, 'name', 'N/A')} &nbsp;|&nbsp;
+                <b>Phone:</b> {getattr(user, 'phone_no', 'N/A')}
+            </p>
+        </div>
+
+        <!-- BODY -->
+        <div style="padding:20px;">
+            <p>Hello Admin,</p>
+            <p>A new order has been placed on <b>The PartyKart</b>. Here are the details:</p>
+
+            <!-- ORDER SUMMARY -->
+            <h3 style="margin-top:30px;">📦 Order Summary</h3>
+            <table style="border-collapse:collapse;width:100%;margin-bottom:20px;font-size:14px;">
+                <thead>
+                    <tr style="background-color:#f4f4f4;">
+                        <th style="padding:8px;border:1px solid #ddd;">#</th>
+                        <th style="padding:8px;border:1px solid #ddd;">Product</th>
+                        <th style="padding:8px;border:1px solid #ddd;">Qty</th>
+                        <th style="padding:8px;border:1px solid #ddd;">Price</th>
+                        <th style="padding:8px;border:1px solid #ddd;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>{items_html}</tbody>
+            </table>
+
+            <p style="font-size:15px;margin-top:10px;">
+                <b>Total:</b> ₹{float(order.total_amount):,.2f}<br>
+                <b>Final Amount:</b> ₹{float(order.final_amount):,.2f}
+            </p>
+
+            <!-- DELIVERY DETAILS -->
+            <h3 style="margin-top:30px;">🚚 Delivery Details</h3>
+            <div style="background:#fafafa;padding:15px;border:1px solid #eee;border-radius:8px;line-height:1.6;">
+                <b>Name:</b> {getattr(user, 'name', 'N/A')}<br>
+                <b>Phone:</b> {getattr(user, 'phone_no', 'N/A')}<br>
+                <b>Address:</b> {order.shipping_address}<br>
+                <b>Payment:</b> {order.payment_method} ({order.payment_status})<br>
+                <b>Delivery Status:</b> {order.delivery_status}
+            </div>
+
+            <p style="font-size:13px;color:#555;margin-top:15px;">
+                <i>Order Date:</i> {order.created_at.strftime('%Y-%m-%d %H:%M:%S') if order.created_at else 'N/A'}
+            </p>
+
+            <!-- FOOTER -->
+            <div style="border-top:1px solid #eee;margin-top:30px;padding-top:15px;text-align:center;">
+                <p style="margin:0;font-size:14px;">Regards,<br><b>The PartyKart</b> 🎉</p>
+                <p style="margin:5px 0 0 0;font-size:12px;color:#888;">This is an automated order notification email.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+
+import aiosmtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+# async def send_admin_notification_async(from_email: str, app_password: str, to_email: str, subject: str, html_body: str):
+#     """
+#     Asynchronously sends an order notification email to the admin.
+#     """
+#     try:
+#         message = MIMEMultipart("alternative")
+#         message["From"] = from_email
+#         message["To"] = to_email
+#         message["Subject"] = subject
+#         message.attach(MIMEText(html_body, "html"))
+
+#         await aiosmtplib.send(
+#             message,
+#             hostname="smtp.gmail.com",
+#             port=587,
+#             start_tls=True,
+#             username=from_email,
+#             password=app_password,
+#         )
+#         print(f"✅ [MAIL] Admin notification sent to {to_email}")
+
+#     except Exception as e:
+#         print(f"⚠️ [MAIL ERROR] Failed to send admin email: {e}")
+
+
+async def send_admin_notification_async(from_email, app_password, to_emails, subject, html_body):
+    if isinstance(to_emails, str):
+        to_emails = [to_emails]  # allow both single or multiple
+
     msg = MIMEMultipart("alternative")
-    msg["From"] = GMAIL_USER
-    msg["To"] = to_email
+    msg["From"] = from_email
+    msg["To"] = ", ".join(to_emails)
     msg["Subject"] = subject
     msg.attach(MIMEText(html_body, "html"))
 
-    # Send via Gmail SMTP
-    await aiosmtplib.send(
-        msg,
-        hostname="smtp.gmail.com",
-        port=587,
-        start_tls=True,
-        username=GMAIL_USER,
-        password=GMAIL_APP_PASSWORD,
-    )
-
-    
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname="smtp.gmail.com",
+            port=587,
+            start_tls=True,
+            username=from_email,
+            password=app_password,
+            recipients=to_emails,  # ✅ sends to all
+        )
+        log.info(f"✅ Admin notification sent to {', '.join(to_emails)}")
+    except Exception as e:
+        log.info(f"❌ Error sending admin notification: {e}")

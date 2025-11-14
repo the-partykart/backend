@@ -69,6 +69,7 @@ from sqlalchemy.orm import selectinload
 async def create_product_db(
     product_name,
     product_price,
+    product_full_price,
     product_image,
     product_description,
     sub_category_id,
@@ -86,6 +87,7 @@ async def create_product_db(
         new_product = Products(
             product_name=product_name,
             product_price=product_price,
+            product_full_price=product_full_price,
             product_description=product_description,
             product_image=product_image,
             sub_category_id=sub_category_id,
@@ -169,6 +171,7 @@ async def get_all_product_db(
                 "product_id": row.product_id,
                 "product_name": row.product_name,
                 "product_price": row.product_price,
+                "product_full_price": row.product_full_price,
                 "product_image": row.product_image,
                 "product_description": row.product_description,
                 "stock":row.stock,
@@ -289,6 +292,7 @@ async def update_product_db(
     product_id: int,
     product_name: Optional[str],
     product_price: Optional[int],
+    product_full_price: Optional[int],
     product_description: Optional[str],
     sub_category_id: Optional[int],
     stock: Optional[int],
@@ -311,6 +315,8 @@ async def update_product_db(
             data["product_name"] = product_name
         if product_price is not None:
             data["product_price"] = product_price
+        if product_full_price is not None:
+            data["product_full_price"] = product_full_price
         if product_description:
             data["product_description"] = product_description
         if sub_category_id:

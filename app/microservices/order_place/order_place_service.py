@@ -6,7 +6,7 @@ from app.db.db_session import get_async_session
 from app.db.services.buy_product_repository import buy_product_db, get_all_buy_product_db, get_buy_product_db
 from app.db.services.order_alert_repository import new_order_db
 from app.db.services.products_repository import create_product_db, delete_product_db, get_all_product_db, get_product_db, update_product_db
-from app.microservices.common_function import object_to_dict
+from app.microservices.common_function import build_admin_order_email, object_to_dict, send_admin_notification_async
 from app.microservices.products.products_service import get_product_service
 from app.utility.logging_utils import log_async 
 
@@ -35,11 +35,15 @@ async def generate_order_id(user_id: int) -> str:
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi import HTTPException
-from app.db.models.db_base import Order, OrderItem, Products, OrderAlert
+from app.db.models.db_base import Order, OrderItem, Products, OrderAlert, Users
 
 
 
-async def create_order(data, user_id: int, session: AsyncSession):
+async def create_order(
+        data, user_id: int, 
+        session: AsyncSession,
+        background_tasks:BackgroundTasks
+):
     total_amount = 0
     items_data = []
 
@@ -104,6 +108,21 @@ async def create_order(data, user_id: int, session: AsyncSession):
 
     await session.commit()
     await session.refresh(order)
+    
+    # user = await session.scalar(select(Users).where(Users.user_id == user_id))
+    user = await session.scalar(select(Users).where(Users.user_id == user_id, Users.is_deleted == False))
+
+    html_body = build_admin_order_email(order, user, items_data)
+
+    background_tasks.add_task(
+        send_admin_notification_async,
+        "thepartykart.service@gmail.com",
+        "tpjynacphveleaek",
+        # "sandeshmorea.c.patil@gmail.com",
+        ["sandeshmorea.c.patil@gmail.com", "thepartykart.service@gmail.com"],
+        f"🛍️ New Order #{order.order_id} Received — The PartyKart",
+        html_body
+    )
 
     return order
 

@@ -24,7 +24,7 @@ from app.microservices.products.products_schema import CourseCreate, CourseRespo
 from app.microservices.products.products_service import check_product_service, create_product_service, delete_product_service, get_all_product_service, get_product_category_service, get_product_service, update_product_service
 # from app.microservices.sectors.sectors_service import check_sector_service
 from app.microservices.users.users_schema import Login, UpdateUserDetails, UserCreate
-from app.utility.logging_utils import log_async, log_background 
+from app.utility.logging_utils import log_async, log_background, log
 from config.config import settings
 
 import cloudinary
@@ -64,6 +64,7 @@ async def create_product_handler(
     background_tasks: BackgroundTasks,
     product_name: str = Form(...),
     product_price: int = Form(...),
+    product_full_price: Optional[int] = Form(None),
     product_description: Optional[str] = Form("No information available for this product"),
     sub_category_id: Optional[int] = Form(None),
     stock: Optional[int] = Form(None),
@@ -114,6 +115,7 @@ async def create_product_handler(
         result = await create_product_service(
             product_name=product_name,
             product_price=product_price,
+            product_full_price = product_full_price,
             product_images=product_images,
             product_description=product_description,
             sub_category_id=sub_category_id,
@@ -199,6 +201,94 @@ async def get_all_product_handler(
         )
         raise HTTPException(status_code=500, detail="Failed to Fetch all product.")
 
+
+@router_v1.get("/search")
+async def search_products(
+    q: str = Query(...),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Search products by product_name only.
+    Returns product_id and product_name.
+    """
+    try:
+
+        query = (
+            select(Products.product_id, Products.product_name)
+            .where(
+                Products.product_name.ilike(f"%{q}%"),
+                Products.is_deleted == False
+            )
+        )
+
+        result = await session.execute(query)
+        products = result.all()  # Since we selected columns, we use .all()
+
+        return [
+            {"product_id": p.product_id, "product_name": p.product_name}
+            for p in products
+        ]
+
+    except HTTPException as http_exc:
+        raise http_exc
+
+    except Exception as e:
+        log.error(f"[dashboard_image][DELETE] Error: {str(e)}")   
+        raise HTTPException(status_code=500, detail="Failed to search Product")
+
+
+@router_v1.get("/admin/search")
+async def search_products(
+    q: str = Query(...),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Search products by product_name only.
+    Returns full product details.
+    """
+    try:
+        query = (
+            select(Products)
+            .where(
+                Products.product_name.ilike(f"%{q}%"),
+                Products.is_deleted == False
+            )
+        )
+
+        result = await session.execute(query)
+        rows = result.scalars().all()  # fetch full model rows
+
+        response = []
+        for row in rows:
+            response.append({
+                "product_id": row.product_id,
+                "product_name": row.product_name,
+                "product_price": row.product_price,
+                "product_full_price": row.product_full_price,
+                "product_image": row.product_image,
+                "product_description": row.product_description,
+                "stock": row.stock,
+                "sub_category_id": row.sub_category_id,
+                "created_by": row.created_by,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "updated_by": row.updated_by,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                "is_deleted": row.is_deleted,
+                "deleted_by": row.deleted_by,
+                "deleted_at": row.deleted_at.isoformat() if row.deleted_at else None,
+            })
+
+        return response
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        log.error(f"[adminsearch] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to search Product")
+
+
+
 @router_v1.get("/{product_id}")
 async def get_product_handler(
     product_id : int,
@@ -240,6 +330,7 @@ async def get_product_handler(
         )
         raise HTTPException(status_code=500, detail="Failed to Fetch product.")
     
+
 
 
 @router_v1.get("/details/{product_id}")
@@ -358,6 +449,7 @@ async def update_product_handler(
     background_tasks: BackgroundTasks,
     product_name: Optional[str] = Form(None),
     product_price: Optional[int] = Form(None),
+    product_full_price : Optional[int] = Form(None),
     product_description: Optional[str] = Form(None),
     sub_category_id: Optional[int] = Form(None),
     stock: Optional[int] = Form(None),
@@ -441,6 +533,7 @@ async def update_product_handler(
             product_id=product_id,
             product_name=product_name,
             product_price=product_price,
+            product_full_price=product_full_price,
             product_description=product_description,
             sub_category_id=sub_category_id,
             stock=stock,

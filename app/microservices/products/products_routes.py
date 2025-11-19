@@ -364,6 +364,7 @@ async def get_product_detail_handler(
             "product_id": product.product_id,
             "product_name": product.product_name,
             "product_price": product.product_price,
+            "product_full_price":product.product_full_price,
             "product_description": product.product_description,
             "sub_category_id": product.sub_category_id,
             "stock": product.stock,

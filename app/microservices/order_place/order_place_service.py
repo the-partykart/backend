@@ -543,3 +543,107 @@ async def get_price_buy_product_service(
         )
         raise HTTPException(status_code=500, detail=f"Failed to Fetch product.{e}")
 
+
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from fastapi import HTTPException
+
+async def get_full_order_details(order_id: int, session: AsyncSession):
+    """
+    Fetch complete order details including:
+    - Order
+    - Order items
+    - Each product (with dimensions)
+    - Shipping address
+    - User info
+    - Calculated totals & box dimensions
+    """
+
+    # Load order + items + product dimensions
+    result = await session.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            selectinload(Order.alerts)
+        )
+        .where(Order.order_id == order_id)
+    )
+
+    order = result.scalar_one_or_none()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Build items list with dimensions
+    items_details = []
+    total_weight = 0
+    total_volumetric_weight = 0
+
+    box_details = []  # Required by BigShip
+
+    for item in order.items:
+        product = item.product
+
+        if not product:
+            raise HTTPException(400, f"Product ID {item.product_id} not found")
+
+        # Defensive check for missing dimensions
+        if not (product.length and product.width and product.height and product.weight):
+            raise HTTPException(
+                400,
+                f"Product '{product.product_name}' missing dimensions "
+                "(length, width, height, weight)."
+            )
+
+        item_total_weight = float(product.weight) * item.quantity
+
+        vol_weight = (
+            float(product.length)
+            * float(product.width)
+            * float(product.height)
+        ) / 5000
+
+        vol_weight *= item.quantity
+
+        total_weight += item_total_weight
+        total_volumetric_weight += vol_weight
+
+        # BigShip box_details (per box)
+        box_details.append({
+            "weight": float(product.weight),
+            "length": float(product.length),
+            "width": float(product.width),
+            "height": float(product.height),
+            "quantity": item.quantity,
+        })
+
+        # Extra info for returning
+        items_details.append({
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "quantity": item.quantity,
+            "per_unit_weight": float(product.weight),
+            "dimensions": {
+                "length": float(product.length),
+                "width": float(product.width),
+                "height": float(product.height),
+            },
+            "subtotal": str(item.subtotal),
+        })
+
+    return {
+        "order_id": order.order_id,
+        "user_id": order.user_id,
+        "shipping_address": order.shipping_address,
+        "payment_method": order.payment_method,
+        "payment_status": order.payment_status,
+        "delivery_status": order.delivery_status,
+        "total_amount": float(order.total_amount),
+        "final_amount": float(order.final_amount),
+        "items": items_details,
+        "box_details": box_details,
+        "weight_summary": {
+            "total_physical_weight": total_weight,
+            "total_volumetric_weight": total_volumetric_weight,
+        }
+    }

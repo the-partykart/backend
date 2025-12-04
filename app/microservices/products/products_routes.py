@@ -63,7 +63,7 @@ cloudinary.config(
 async def create_product_handler(
     background_tasks: BackgroundTasks,
     product_name: str = Form(...),
-    product_price: int = Form(...),
+    product_price: Optional[int] = Form(0),
     product_full_price: Optional[int] = Form(None),
     product_description: Optional[str] = Form("No information available for this product"),
     sub_category_id: Optional[int] = Form(None),
@@ -789,66 +789,66 @@ async def delete_dashboard_image_handler(
 
 
 
-# ✅ Upload / Create a course
-@router_v1.post("/courses/create", response_model=CourseResponse, summary="Upload a new course")
-async def create_course(
-    data: CourseCreate,
-    session: AsyncSession = Depends(get_async_session),
-    user: Users = Depends(get_current_user),
-):
-    new_course = Courses(
-        course_name=data.course_name,
-        course_link=data.course_link,
-        created_by=user.user_id if user else None,
-        created_at=datetime.utcnow(),
-        is_deleted=False,
-    )
+# # ✅ Upload / Create a course
+# @router_v1.post("/courses/create", response_model=CourseResponse, summary="Upload a new course")
+# async def create_course(
+#     data: CourseCreate,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: Users = Depends(get_current_user),
+# ):
+#     new_course = Courses(
+#         course_name=data.course_name,
+#         course_link=data.course_link,
+#         created_by=user.user_id if user else None,
+#         created_at=datetime.utcnow(),
+#         is_deleted=False,
+#     )
 
-    session.add(new_course)
-    await session.commit()
-    await session.refresh(new_course)
+#     session.add(new_course)
+#     await session.commit()
+#     await session.refresh(new_course)
 
-    return new_course
+#     return new_course
 
-# Fetch all courses
-@router_v1.get("/courses/list", summary="Fetch all courses")
-async def get_all_courses(session: AsyncSession = Depends(get_async_session)):
-    result = await session.execute(select(Courses).where(Courses.is_deleted == False))
-    courses = result.scalars().all()
-    return {"status": 1, "data": courses}
+# # Fetch all courses
+# @router_v1.get("/courses/list", summary="Fetch all courses")
+# async def get_all_courses(session: AsyncSession = Depends(get_async_session)):
+#     result = await session.execute(select(Courses).where(Courses.is_deleted == False))
+#     courses = result.scalars().all()
+#     return {"status": 1, "data": courses}
 
 
-# ✅ Delete course (soft delete)
-@router_v1.delete("/courses/{course_id}", summary="Delete a course")
-async def delete_course(
-    course_id: int,
-    session: AsyncSession = Depends(get_async_session),
-    user: Users = Depends(get_current_user),  # whoever is logged in
-):
-    query = select(Courses).where(Courses.course_id == course_id, Courses.is_deleted == False)
-    result = await session.execute(query)
-    course = result.scalars().first()
+# # ✅ Delete course (soft delete)
+# @router_v1.delete("/courses/{course_id}", summary="Delete a course")
+# async def delete_course(
+#     course_id: int,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: Users = Depends(get_current_user),  # whoever is logged in
+# ):
+#     query = select(Courses).where(Courses.course_id == course_id, Courses.is_deleted == False)
+#     result = await session.execute(query)
+#     course = result.scalars().first()
 
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found or already deleted",
-        )
+#     if not course:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Course not found or already deleted",
+#         )
 
-    # soft delete
-    stmt = (
-        update(Courses)
-        .where(Courses.course_id == course_id)
-        .values(
-            is_deleted=True,
-            canceled_by=user.user_id if user else None,
-            canceled_at=datetime.utcnow(),
-        )
-    )
-    await session.execute(stmt)
-    await session.commit()
+#     # soft delete
+#     stmt = (
+#         update(Courses)
+#         .where(Courses.course_id == course_id)
+#         .values(
+#             is_deleted=True,
+#             canceled_by=user.user_id if user else None,
+#             canceled_at=datetime.utcnow(),
+#         )
+#     )
+#     await session.execute(stmt)
+#     await session.commit()
 
-    return {"status": 1, "message": f"Course {course_id} deleted successfully"}
+#     return {"status": 1, "message": f"Course {course_id} deleted successfully"}
 
 
 

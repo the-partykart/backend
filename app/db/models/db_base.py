@@ -252,22 +252,6 @@ class BuyProducts(Base):
 
 
 
-class Courses(Base):
-    __tablename__ = "pk_courses"
-
-    course_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    course_name = Column(String(300), nullable=False)
-    course_link = Column(String(300), nullable=False)
-    created_by = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_by = Column(Integer, nullable=True)
-    updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
-    is_deleted = Column(Boolean, default=False, nullable=False)
-    canceled_by = Column(Integer, nullable=True)
-    canceled_at = Column(DateTime, nullable=True)
-
-
-
 class Cart(Base):
     __tablename__ = "pk_cart"
 
@@ -374,6 +358,153 @@ class OrderAlert(Base):
 
     # Relationship
     order = relationship("Order", back_populates="alerts")
+
+
+class BigShipToken(Base):
+    __tablename__ = "bigship_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(Text, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class OrderShipment(Base):
+    __tablename__ = "pk_order_shipments"
+
+    shipment_id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+
+    order_id = Column(BigInteger, ForeignKey("pk_orders.order_id", ondelete="CASCADE"))
+    order = relationship("Order", backref="shipment")
+
+    # Packing details (admin will update these)
+    shipment_weight = Column(DECIMAL(10,2), nullable=True)
+    shipment_length = Column(DECIMAL(10,2), nullable=True)
+    shipment_width = Column(DECIMAL(10,2), nullable=True)
+    shipment_height = Column(DECIMAL(10,2), nullable=True)
+    shipment_chargeable_weight = Column(DECIMAL(10,2), nullable=True)
+
+    # BigShip response details
+    bigship_system_order_id = Column(String(255), nullable=True)
+    bigship_master_awb = Column(String(255), nullable=True)
+    bigship_courier_id = Column(Integer, nullable=True)
+    bigship_label_base64 = Column(Text, nullable=True)
+
+    manifest_status = Column(String(50), default="pending")
+    error_message = Column(Text, nullable=True)
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, onupdate=func.now())
+
+
+
+# class Courses(Base):
+#     __tablename__ = "pk_courses"
+
+#     course_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+#     course_name = Column(String(300), nullable=False)
+#     course_link = Column(String(300), nullable=False)
+#     course_subcategory = Column(Integer, nullable=False)
+#     created_by = Column(Integer, nullable=True)
+#     created_at = Column(DateTime, default=func.now(), nullable=False)
+#     updated_by = Column(Integer, nullable=True)
+#     updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
+#     is_deleted = Column(Boolean, default=False, nullable=False)
+#     canceled_by = Column(Integer, nullable=True)
+#     canceled_at = Column(DateTime, nullable=True)
+
+
+# class CourseCategary(Base):
+#     __tablename__ = "pk_category"
+
+#     category_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+#     category_name = Column(String(100), nullable=False, index=True)
+#     category_image = Column(String(500), nullable=True)
+#     created_by = Column(Integer, nullable=True)
+#     created_at = Column(DateTime, default=func.now(), nullable=False)
+#     updated_by = Column(Integer, nullable=True)
+#     updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
+#     is_deleted = Column(Boolean, default=False, nullable=False)
+#     deleted_by = Column(Integer, nullable=True)
+#     deleted_at = Column(DateTime, nullable=True)
+
+
+# class CourseSubCategary(Base):
+#     __tablename__ = "pk_sub_category"
+
+#     sub_category_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+#     sub_category_name = Column(String(100), nullable=False, index=True)
+#     sub_category_image = Column(String(500), nullable=True)
+#     category_id = Column(Integer, nullable=False, index=True)
+#     created_by = Column(Integer, nullable=True)
+#     created_at = Column(DateTime, default=func.now(), nullable=False)
+#     updated_by = Column(Integer, nullable=True)
+#     updated_at = Column(DateTime, onupdate=func.now(),nullable=True)
+#     is_deleted = Column(Boolean, default=False, nullable=False)
+#     deleted_by = Column(Integer, nullable=True)
+#     deleted_at = Column(DateTime, nullable=True)
+
+
+
+
+# Note: if your project already defines these models, remove duplicates and only keep routes/schemas.
+class CourseCategory(Base):
+    __tablename__ = "pk_course_category"
+
+    category_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    category_name = Column(String(100), nullable=False, index=True)
+    category_image = Column(String(500), nullable=True)
+    created_by = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_by = Column(Integer, nullable=True)
+    updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_by = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    subcategories = relationship("CourseSubCategory", back_populates="category", lazy="selectin")
+
+
+class CourseSubCategory(Base):
+    __tablename__ = "pk_course_sub_category"
+
+    sub_category_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    sub_category_name = Column(String(100), nullable=False, index=True)
+    sub_category_image = Column(String(500), nullable=True)
+    category_id = Column(Integer, ForeignKey("pk_course_category.category_id"), nullable=False, index=True)
+    created_by = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_by = Column(Integer, nullable=True)
+    updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_by = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    category = relationship("CourseCategory", back_populates="subcategories")
+    courses = relationship("Courses", back_populates="subcategory", lazy="selectin")
+
+
+class Courses(Base):
+    __tablename__ = "pk_courses"
+
+    course_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    course_name = Column(String(300), nullable=False)
+    course_link = Column(String(300), nullable=False)
+    course_subcategory = Column(
+        Integer,
+        ForeignKey("pk_course_sub_category.sub_category_id"),
+        nullable=False,
+        index=True,
+    )
+    created_by = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_by = Column(Integer, nullable=True)
+    updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    canceled_by = Column(Integer, nullable=True)
+    canceled_at = Column(DateTime, nullable=True)
+
+    subcategory = relationship("CourseSubCategory", back_populates="courses")
+
 
 ### ------------------------------------------------------------------ 
 

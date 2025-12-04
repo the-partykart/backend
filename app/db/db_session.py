@@ -88,8 +88,24 @@ db_port = settings.db_port
 db_database_name = settings.db_database_name
 db_server = settings.db_server
 
+print("Driver:", db_drivername)
+print("User:", db_username)
+print("Password:", db_password)
+print("Host:", db_server)
+print("Port:", db_port)
+print("DB:", db_database_name)
+
+
+
 # ✅ Build the async MySQL connection URL
-DB_URL = f"mysql+{db_drivername}://{db_username}:{quote_plus(db_password)}@{db_server}:{db_port}/{db_database_name}"
+DB_URL = f"mysql+{db_drivername}://{db_username}:{db_password}@{db_server}:{db_port}/{db_database_name}"
+
+
+print("FINAL URL:", DB_URL)
+
+
+# DB_URL = "mysql+asyncmy://root:root@localhost:3306/pk"
+
 
 # ✅ Create async engine with connection pooling
 async_engine = create_async_engine(

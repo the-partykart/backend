@@ -71,7 +71,9 @@ async def create_order(
             "subtotal": subtotal
         })
 
-    # 2️⃣ Create the order
+        
+    total_amount += data.shipping_details.total_shipping_charges
+
     order = Order(
         user_id=user_id,
         total_amount=total_amount,
@@ -81,6 +83,8 @@ async def create_order(
         payment_status="Pending",
         delivery_status="Pending",
         shipping_address=data.shipping_address,
+        shipping_details=data.shipping_details.model_dump(),
+
     )
     session.add(order)
     await session.flush()  # ✅ ensures order_id is available

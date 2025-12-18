@@ -1,6 +1,7 @@
 import asyncio
+from datetime import date, datetime
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import DECIMAL, TIMESTAMP, BigInteger, Column, Integer, Numeric, String, ForeignKey, DateTime, Boolean, JSON, Text, create_engine
+from sqlalchemy import DECIMAL, TIMESTAMP, BigInteger, Column, Date, Integer, Numeric, String, ForeignKey, DateTime, Boolean, JSON, Text, create_engine
 from sqlalchemy.sql import func 
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import sessionmaker
@@ -218,6 +219,7 @@ class BuyProducts(Base):
     category_id = Column(Integer, nullable=True)
     sub_category_id = Column(Integer, nullable=True)
     shipping_address = Column(JSON, nullable=True)
+    shipping_rate_info = Column(JSON, nullable=False)
     payment_method = Column(String(100), nullable=True)
     payment_status = Column(String(100), nullable=True, default=0)
     quantity = Column(Integer, nullable=True)
@@ -302,26 +304,75 @@ class DashBoardImage(Base):
 
 
 
+# # 2️⃣ Orders (placed by user)
+# class Order(Base):
+#     __tablename__ = "pk_orders"
+
+#     order_id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+#     user_id = Column(Integer, nullable=False)
+#     total_amount = Column(DECIMAL(10, 2), nullable=False)
+#     discount_amount = Column(DECIMAL(10, 2), nullable=False, default=0)
+#     final_amount = Column(DECIMAL(10, 2), nullable=False)
+#     payment_method = Column(String(50), nullable=False)
+#     payment_status = Column(String(50), default="Pending")
+#     delivery_status = Column(String(50), default="Pending")
+#     delivery_tracking_id = Column(String(100), nullable=True)
+#     shipping_address = Column(JSON, nullable=False)
+#     created_at = Column(TIMESTAMP, server_default=func.now())
+#     updated_at = Column(TIMESTAMP, onupdate=func.now())
+#     shipping_details = Column(JSON, nullable=True)
+#     confirm_order_status = Column(String(50),nullable=False,default="Pending")
+
+#     # Relationships
+#     items = relationship("OrderItem", back_populates="order", cascade="all, delete")
+#     alerts = relationship("OrderAlert", back_populates="order", cascade="all, delete")
+
+#     shipments = relationship(
+#         "OrderShipment",
+#         back_populates="order",
+#         cascade="all, delete-orphan"
+#     )
+
 # 2️⃣ Orders (placed by user)
 class Order(Base):
     __tablename__ = "pk_orders"
 
     order_id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, nullable=False)
+
     total_amount = Column(DECIMAL(10, 2), nullable=False)
     discount_amount = Column(DECIMAL(10, 2), nullable=False, default=0)
     final_amount = Column(DECIMAL(10, 2), nullable=False)
+
     payment_method = Column(String(50), nullable=False)
     payment_status = Column(String(50), default="Pending")
-    delivery_status = Column(String(50), default="Pending")
-    delivery_tracking_id = Column(String(100))
+
+    # FRONTEND STATUS
+    delivery_status = Column(String(50), default="Pending")  # Pending → Shipped → Delivered
+    delivery_tracking_id = Column(String(100), nullable=True)
+
+    confirm_order_status = Column(
+        String(50),
+        nullable=False,
+        default="Pending"  # Pending → Confirmed → Cancelled
+    )
+
     shipping_address = Column(JSON, nullable=False)
+    shipping_details = Column(JSON, nullable=True)
+
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, onupdate=func.now())
 
     # Relationships
     items = relationship("OrderItem", back_populates="order", cascade="all, delete")
     alerts = relationship("OrderAlert", back_populates="order", cascade="all, delete")
+
+    shipments = relationship(
+        "OrderShipment",
+        back_populates="order",
+        cascade="all, delete-orphan"
+    )
+
 
 
 # 3️⃣ Order Items (each product line inside an order)
@@ -355,13 +406,15 @@ class OrderAlert(Base):
     alert_type = Column(String(50), nullable=False)
     alert_message = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    shipping_details = Column(JSON, nullable=True)
+
 
     # Relationship
     order = relationship("Order", back_populates="alerts")
 
 
 class BigShipToken(Base):
-    __tablename__ = "bigship_tokens"
+    __tablename__ = "pk_bigship_tokens"
     id = Column(Integer, primary_key=True, index=True)
     token = Column(Text, nullable=False)
     expires_at = Column(DateTime, nullable=False)
@@ -373,28 +426,60 @@ class OrderShipment(Base):
 
     shipment_id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
 
-    order_id = Column(BigInteger, ForeignKey("pk_orders.order_id", ondelete="CASCADE"))
-    order = relationship("Order", backref="shipment")
+    order_id = Column(
+        BigInteger,
+        ForeignKey("pk_orders.order_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    order = relationship("Order", back_populates="shipments")
 
-    # Packing details (admin will update these)
-    shipment_weight = Column(DECIMAL(10,2), nullable=True)
-    shipment_length = Column(DECIMAL(10,2), nullable=True)
-    shipment_width = Column(DECIMAL(10,2), nullable=True)
-    shipment_height = Column(DECIMAL(10,2), nullable=True)
-    shipment_chargeable_weight = Column(DECIMAL(10,2), nullable=True)
+    # Provider
+    provider = Column(String(50), default="bigship", nullable=False)
 
-    # BigShip response details
-    bigship_system_order_id = Column(String(255), nullable=True)
-    bigship_master_awb = Column(String(255), nullable=True)
+    # Dimensions
+    shipment_weight = Column(DECIMAL(10, 2), nullable=True)
+    shipment_length = Column(DECIMAL(10, 2), nullable=True)
+    shipment_width = Column(DECIMAL(10, 2), nullable=True)
+    shipment_height = Column(DECIMAL(10, 2), nullable=True)
+    shipment_chargeable_weight = Column(DECIMAL(10, 2), nullable=True)
+
+    # Courier
     bigship_courier_id = Column(Integer, nullable=True)
-    bigship_label_base64 = Column(Text, nullable=True)
+    courier_name = Column(String(100), nullable=True)
 
-    manifest_status = Column(String(50), default="pending")
+    # BigShip IDs
+    bigship_system_order_id = Column(String(255), index=True, nullable=True)
+    bigship_master_awb = Column(String(255), index=True, nullable=True)
+
+    manifest_status = Column(
+        String(50),
+        default="pending"  # pending → created → manifested → cancelled
+    )
+
+    # Docs
+    bigship_label_base64 = Column(Text, nullable=True)
+    label_url = Column(String(500), nullable=True)
+
+    # Debug / Audit
+    rate_response = Column(JSON, nullable=True)
+    order_payload = Column(JSON, nullable=True)
+    provider_response = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
 
     created_at = Column(TIMESTAMP, server_default=func.now())
+    manifested_at = Column(TIMESTAMP, nullable=True)
     updated_at = Column(TIMESTAMP, onupdate=func.now())
 
+    tracking_status = Column(String(100), nullable=True)
+    tracking_location = Column(String(255), nullable=True)
+    tracking_last_updated = Column(DateTime, nullable=True)
+    expected_delivery_date = Column(Date, nullable=True)
+
+    tracking_raw_response = Column(JSON, nullable=True)
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, onupdate=func.now())
 
 
 # class Courses(Base):
@@ -505,6 +590,14 @@ class Courses(Base):
 
     subcategory = relationship("CourseSubCategory", back_populates="courses")
 
+
+class Note(Base):
+    __tablename__ = "pk_notes"
+
+    note_id = Column(Integer, primary_key=True, index=True)
+    note_text = Column(String(170), nullable=False)
+    assigned_date = Column(Date, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 ### ------------------------------------------------------------------ 
 

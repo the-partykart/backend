@@ -105,6 +105,7 @@ async def get_order_details(order_id: int, session: AsyncSession = Depends(get_a
             }
             for item in order.items  # ✅ Correct relationship name
         ],
+        "shipping_details":order.shipping_details
     }
 
 
@@ -130,7 +131,8 @@ async def get_all_user_orders(
     orders = result.scalars().all()
 
     if not orders:
-        raise HTTPException(status_code=404, detail="No orders found for this user")
+        # raise HTTPException(status_code=404, detail="No orders found for this user")
+        return []
 
     return [
         {
@@ -149,6 +151,7 @@ async def get_all_user_orders(
                 }
                 for item in order.items
             ],
+            "shipping_details" : order.shipping_details
         }
         for order in orders
     ]
@@ -223,6 +226,8 @@ async def get_all_orders_for_admin(
                 }
                 for item in order.items
             ],
+            "shipping_details":order.shipping_details,
+            "confirm_order_status":order.confirm_order_status
         }
         for order in orders
     ]

@@ -18,6 +18,7 @@ async def new_order_db(
         order_id,
         buy_product_id,
         total_amount,
+        shipping_details,
         user_id,
         session: AsyncSession,
         background_tasks : BackgroundTasks,
@@ -28,8 +29,8 @@ async def new_order_db(
             buy_product_id = buy_product_id,
             total_amount =total_amount,
             delivery_status = "Undelivered",
+            shipping_details = shipping_details or {},
             created_by = user_id
-            
             )
         session.add(new_order)
         await session.commit()

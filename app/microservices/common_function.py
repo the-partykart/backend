@@ -403,8 +403,8 @@ async def send_admin_notification_async(from_email, app_password, to_emails, sub
             start_tls=True,
             username=from_email,
             password=app_password,
-            recipients=to_emails,  # ✅ sends to all
+            recipients=to_emails,  # sends to all
         )
-        log.info(f"✅ Admin notification sent to {', '.join(to_emails)}")
+        log.info(f"Admin notification sent to {','.join(to_emails)}")
     except Exception as e:
-        log.info(f"❌ Error sending admin notification: {e}")
+        log.info(f"Error sending admin notification: {e}")

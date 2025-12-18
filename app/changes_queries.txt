@@ -1,0 +1,36 @@
+
+
+
+CREATE TABLE pk_order_shipments (
+    shipment_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    order_id BIGINT NOT NULL,
+
+    -- Admin confirmed packing details
+    shipment_weight DECIMAL(10,2),
+    shipment_length DECIMAL(10,2),
+    shipment_width DECIMAL(10,2),
+    shipment_height DECIMAL(10,2),
+    shipment_chargeable_weight DECIMAL(10,2),
+
+    -- BigShip info
+    bigship_system_order_id VARCHAR(255),
+    bigship_master_awb VARCHAR(255),
+    bigship_courier_id INT,
+    bigship_label_base64 LONGTEXT,
+    manifest_status VARCHAR(50) DEFAULT 'pending',
+
+    -- Errors
+    error_message TEXT,
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_shipment_order FOREIGN KEY (order_id)
+        REFERENCES pk_orders(order_id)
+        ON DELETE CASCADE
+);
+
+
+
+

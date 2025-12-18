@@ -10,6 +10,8 @@ class ProductCategoryList(BaseModel):
     shipping_address : Optional[str] = Field(None)
     payment_method : Optional[str] = Field(None)
     payment_status : Optional[str] = Field(None)
+    shipping_details : Optional[dict] = Field(None),
+
 
 
 

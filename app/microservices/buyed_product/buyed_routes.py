@@ -8,6 +8,7 @@ from fastapi import HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta, timezone
 
+from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 import uvicorn
 
@@ -55,11 +56,10 @@ async def buy_product_handler(
     background_tasks : BackgroundTasks,
     session : AsyncSession = Depends(get_async_session),
     user : Users = Depends(get_current_user),
-
 ):
     try:
         total_amount = 0
-
+        shipping_details = data[0].shipping_details
         order_id_result = await generate_order_id(user_id = user.user_id)
         order_id = order_id_result
         for item in data:
@@ -149,14 +149,20 @@ async def buy_product_handler(
                 background_tasks=background_tasks,
             )
 
+        # insert shipping details
+        shipping_amount = shipping_details["total_shipping_charges"]
+        total_amount = total_amount + shipping_amount
+
         order_alert = await new_order_db(
             order_id=order_id,
             buy_product_id=result,
             total_amount = total_amount,
+            shipping_details = shipping_details,
             user_id=user.user_id,
             session=session,
             background_tasks=background_tasks,
         )
+
 
         if order_alert:
             return JSONResponse(content={

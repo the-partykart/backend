@@ -89,17 +89,17 @@ async def create_product_handler(
         # image handling
         product_images = files if files else None
 
-        # check for duplicate product
-        check_product_name = await check_product_name_db(
-            product_name=product_name,
-            session=session,
-            background_tasks=background_tasks,
-        )
-        if check_product_name:
-            raise HTTPException(
-                detail="Product Already Created",
-                status_code=status.HTTP_409_CONFLICT
-            )
+        # #check for duplicate product
+        # check_product_name = await check_product_name_db(
+        #     product_name=product_name,
+        #     session=session,
+        #     background_tasks=background_tasks,
+        # )
+        # if check_product_name:
+        #     raise HTTPException(
+        #         detail="Product Already Created",
+        #         status_code=status.HTTP_409_CONFLICT
+        #     )
 
         # validate subcategory if provided
         if sub_category_id:
@@ -487,14 +487,14 @@ async def update_product_handler(
 
         current_product_name = product_data.product_name
 
-        # --- Check for duplicate name ---
-        if product_name and product_name != current_product_name:
-            if await check_product_name_db(
-                product_name=product_name,
-                session=session,
-                background_tasks=background_tasks,
-            ):
-                raise HTTPException(status_code=409, detail="Product name already exists")
+        # #--- Check for duplicate name ---
+        # if product_name and product_name != current_product_name:
+        #     if await check_product_name_db(
+        #         product_name=product_name,
+        #         session=session,
+        #         background_tasks=background_tasks,
+        #     ):
+        #         raise HTTPException(status_code=409, detail="Product name already exists")
 
         # --- Validate subcategory ---
         if sub_category_id:

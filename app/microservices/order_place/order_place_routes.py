@@ -16,20 +16,20 @@ from app.db.services.offers_repository import get_offer_db
 from app.db.services.order_alert_repository import new_order_db
 from app.db.services.products_repository import check_product_name_db, get_product_db
 from app.db.services.promocodes_repository import get_promocode_db
-from app.microservices.buyed_product.buyed_product_schema import CartProductData, CartProductOfferData, ProductCategoryList, ProductCategoryList
+from app.microservices.buyed_product.buyed_product_schema import CartProductData, ProductCategoryList, ProductCategoryList
 from app.microservices.buyed_product.buyed_product_service import buy_product_service, generate_order_id, get_all_buy_product_service, get_buy_product_service, get_price_buy_product_service
 from app.microservices.common_function import get_current_role, get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.db_session import get_async_session
 from app.db.models.db_base import OrderItem, Users
-from app.microservices.offers.offers_service import get_offer_service
+# from app.microservices.offers.offers_service import get_offer_service
 from app.microservices.order_place.order_place_schema import OrderCreate
 from app.microservices.order_place.order_place_service import create_order
 from app.microservices.products.products_schema import CreateProduct, Updateproduct
 from app.microservices.products.products_service import check_product_service, create_product_service, delete_product_service, get_all_product_service, get_product_service, update_product_service
 # from app.microservices.sectors.sectors_service import check_sector_service
-from app.microservices.promocodes.promocodes_service import get_promocode_service
+# from app.microservices.promocodes.promocodes_service import get_promocode_service
 from app.microservices.users.users_schema import Login, UpdateUserDetails, UserCreate
 from app.utility.logging_utils import log_async, log_background 
 from config.config import settings
@@ -105,7 +105,8 @@ async def get_order_details(order_id: int, session: AsyncSession = Depends(get_a
             }
             for item in order.items  # ✅ Correct relationship name
         ],
-        "shipping_details":order.shipping_details
+        "shipping_details":order.shipping_details,
+        "shipping_address":order.shipping_address
     }
 
 

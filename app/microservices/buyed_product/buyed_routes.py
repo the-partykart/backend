@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.db_session import get_async_session
 from app.db.models.db_base import Users
-from app.microservices.offers.offers_service import get_offer_service
+# from app.microservices.offers.offers_service import get_offer_service
 from app.microservices.products.products_schema import CreateProduct, Updateproduct
 from app.microservices.products.products_service import check_product_service, create_product_service, delete_product_service, get_all_product_service, get_product_service, update_product_service
 # from app.microservices.sectors.sectors_service import check_sector_service

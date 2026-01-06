@@ -198,10 +198,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.db.models.db_base import BigShipToken, OrderShipment  # you already referenced this
-from app.utility.logging_utils import log_async  # optional, if you have it
+from app.utility.logging_utils import log_async, log # optional, if you have it
 from config.config import settings
 
 # -----------------------------------------
@@ -222,6 +222,7 @@ if not USERNAME or not PASSWORD or not ACCESS_KEY:
 
 class BigShipClient:
     def __init__(self):
+        self.base_url = settings.BASE_URL
         self.client = httpx.AsyncClient(base_url=BASE_URL, timeout=60.0)
 
     async def close(self):
@@ -234,13 +235,22 @@ class BigShipClient:
         q = await db.execute(select(BigShipToken).order_by(BigShipToken.id.desc()).limit(1))
         return q.scalars().first()
 
+    # async def _save_token(self, db: AsyncSession, token: str):
+    #     obj = BigShipToken(
+    #         token=token,
+    #         expires_at=datetime.utcnow() + timedelta(hours=12)
+    #     )
+    #     db.add(obj)
+    #     await db.commit()
+
     async def _save_token(self, db: AsyncSession, token: str):
-        obj = BigShipToken(
+        await db.execute(delete(BigShipToken))
+        db.add(BigShipToken(
             token=token,
             expires_at=datetime.utcnow() + timedelta(hours=12)
-        )
-        db.add(obj)
+        ))
         await db.commit()
+
 
     async def get_token(self, db: AsyncSession) -> str:
         # return valid token from DB or request new
@@ -270,21 +280,78 @@ class BigShipClient:
     # -------------------------
     # Private request wrapper
     # -------------------------
-    async def _request(self, db: AsyncSession, method: str, url: str, **kwargs):
-        """
-        Handles token injection, rate-limit pause and JSON response normalization.
-        """
-        token = await self.get_token(db)
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {token}"
-        headers["Content-Type"] = "application/json"
-        await asyncio.sleep(RATE_LIMIT_SLEEP)
+    # async def _request(self, db: AsyncSession, method: str, url: str, **kwargs):
+    #     """
+    #     Handles token injection, rate-limit pause and JSON response normalization.
+    #     """
+    #     token = await self.get_token(db)
+    #     headers = kwargs.pop("headers", {})
+    #     headers["Authorization"] = f"Bearer {token}"
+    #     headers["Content-Type"] = "application/json"
+    #     await asyncio.sleep(RATE_LIMIT_SLEEP)
 
-        resp = await self.client.request(method, url, headers=headers, **kwargs)
-        try:
-            return resp.json()
-        except Exception:
-            return {"success": False, "message": "Invalid JSON from BigShip", "status_code": resp.status_code}
+    #     resp = await self.client.request(method, url, headers=headers, **kwargs)
+    #     try:
+    #         return resp.json()
+    #     except Exception:
+    #         return {"success": False, "message": "Invalid JSON from BigShip", "status_code": resp.status_code}
+
+    # async def _request(self, db: AsyncSession, method: str, url: str, json=None):
+    #     token = await self.get_token(db)
+
+    #     headers = {
+    #         "Authorization": f"Bearer {token}",
+    #         "Content-Type": "application/json"
+    #     }
+
+    #     async with httpx.AsyncClient(base_url=self.base_url) as client:
+    #         response = await client.request(method, url, json=json, headers=headers)
+
+    #         # 🔁 TOKEN EXPIRED → RELogin
+    #         if response.status_code in (401, 403):
+    #             await self.force_refresh_token(db)
+
+    #             token = await self.get_token(db)
+    #             headers["Authorization"] = f"Bearer {token}"
+
+    #             response = await client.request(
+    #                 method, url, json=json, headers=headers
+    #             )
+
+    #         response.raise_for_status()
+    #         return response.json()
+
+    async def _request(self, db: AsyncSession, method: str, url: str, json=None):
+        token = await self.get_token(db)
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        async with httpx.AsyncClient(base_url=self.base_url) as client:
+            response = await client.request(method, url, json=json, headers=headers)
+
+            # 🔁 Retry on auth failure
+            if response.status_code in (401, 403):
+                await self.force_refresh_token(db)
+                token = await self.get_token(db)
+                headers["Authorization"] = f"Bearer {token}"
+                response = await client.request(method, url, json=json, headers=headers)
+
+            # 🔴 LOG ACTUAL BIGSHIP ERROR
+            if response.status_code >= 400:
+                try:
+                    print("BIGSHIP ERROR:", response.json())
+                except Exception:
+                    print("BIGSHIP ERROR RAW:", response.text)
+
+                raise RuntimeError(
+                    f"BigShip API Error {response.status_code}: {response.text}"
+                )
+
+            return response.json()
+
 
     # -------------------------
     # Auth related (exposed)
@@ -340,22 +407,64 @@ class BigShipClient:
     # -------------------------
     # Single order
     # -------------------------
+    # async def add_single_order(self, db: AsyncSession, payload: dict):
+    #     # return await self._request(db, "POST", "/api/order/add/single", json=payload)
+    #     # return {
+    #     #     "success": True,
+    #     #     "message": "Order created in BigShip",
+    #     #     "system_order_id": "BSO123456789"
+    #     #     }
+
+    #     # Make the actual HTTP POST request
+    #     response = await self._request(
+    #         db,
+    #         method="POST",
+    #         endpoint="/api/order/add/single",
+    #         json=payload
+    #     )
+
+    #     return response
+
+    # async def add_single_order(self, db: AsyncSession, payload: dict):
+    #     return await self._request(
+    #         db,
+    #         "POST",
+    #         "/api/order/add/single",
+    #         json=payload
+    #     )
+
     async def add_single_order(self, db: AsyncSession, payload: dict):
-        # return await self._request(db, "POST", "/api/order/add/single", json=payload)
-        return {
-            "success": True,
-            "message": "Order created in BigShip",
-            "system_order_id": "BSO123456789"
-            }
+        try:
+            return await self._request(
+                db=db,
+                method="POST",
+                url="/api/order/add/single",
+                json=payload
+            )
+        except httpx.HTTPStatusError as e:
+            try:
+                data = e.response.json()
+            except Exception:
+                data = {"message": e.response.text}
+
+            log.error("BIGSHIP ERROR:", data)
+            raise RuntimeError(f"BigShip Order Failed: {data}")
 
 
     async def manifest_single(self, db: AsyncSession, payload: dict):
         # return await self._request(db, "POST", "/api/order/manifest/single", json=payload)    
-        return {
-            "success": True,
-            "message": "Order manifested successfully",
-            "responseCode": 200
-        }
+        # return {
+        #     "success": True,
+        #     "message": "Order manifested successfully",
+        #     "responseCode": 200
+        # }
+
+        return await self._request(
+            db=db,
+            method="POST",
+            url="/api/order/manifest/single",
+            json=payload
+        )
 
     # -------------------------
     # Heavy order
@@ -366,31 +475,64 @@ class BigShipClient:
     async def manifest_heavy(self, db: AsyncSession, payload: dict):
         return await self._request(db, "POST", "/api/order/manifest/heavy", json=payload)
 
-    # -------------------------
-    # Shipment data (AWB / Label / Manifest)
-    # -------------------------
-    async def get_shipment_data(self, db: AsyncSession, shipment_data_id: int, system_order_id: int):
-        # url = f"/api/shipment/data?shipment_data_id={shipment_data_id}&system_order_id={system_order_id}"
-        # return await self._request(db, "GET", url)
 
-        return {
-            "success": True,
-            "data": {
-                "master_awb": "BSAWB123456789",
-                "courier_id": 25,
-                "courier_name": "Amazon 1Kg",
-                "label_url": "https://dummy.bigship.in/label/BSAWB123456789.pdf"
-            },
-            "message": "Shipment data fetched",
-            "responseCode": 200
-        }
+    async def get_shipment_data(
+        self,
+        db: AsyncSession,
+        shipment_data_id: int,
+        system_order_id: int
+    ):
+        """
+        BigShip: POST request with QUERY PARAMS (no body)
+        """
+        url = (
+            f"/api/shipment/data"
+            f"?shipment_data_id={shipment_data_id}"
+            f"&system_order_id={system_order_id}"
+        )
+
+        return await self._request(
+            db=db,
+            method="POST",
+            url=url,
+            json=None  
+        )
+    
+    async def get_tracking_details(
+        self,
+        db: AsyncSession,
+        tracking_type: str,
+        tracking_id: str
+    ):
+        """
+        Get tracking details using AWB or LRN
+        """
+        url = (
+            f"/api/tracking"
+            f"?tracking_type={tracking_type}"
+            f"&tracking_id={tracking_id}"
+        )
+
+        return await self._request(
+            db=db,
+            method="GET",
+            url=url
+        )
+
+
+
 
     # -------------------------
     # Cancel AWB
     # -------------------------
-    async def cancel_awb(self, db: AsyncSession, awb_list: list):
-        payload = {"awbs": awb_list}
-        return await self._request(db, "PUT", "/api/order/cancel", json=payload)
+    async def cancel_awb(self, db: AsyncSession, awbs: list[str]):
+        return await self._request(
+            db=db,
+            method="PUT",
+            url="/api/order/cancel",
+            json=awbs
+        )
+
 
     # -------------------------
     # Tracking
@@ -410,29 +552,34 @@ class BigShipClient:
         if risk_type:
             url += f"&risk_type={risk_type}"
         return await self._request(db, "GET", url)
-    
-    async def cancel_single_order(self, db: AsyncSession, payload: dict):
-        # REAL:
-        # return await self._request(db, "POST", "/api/order/cancel", json=payload)
 
-        # DUMMY FOR TESTING
-        return {
-            "success": True,
-            "message": "Order cancelled successfully",
-            "responseCode": 200
-        }
 
+from decimal import Decimal
+
+PACKING_BUFFER_CM = 2
+VOLUMETRIC_DIVISOR = 5000  # BigShip standard
 
 
 def calculate_shipment_from_products(order_items):
-    total_dead_weight = 0.0
-    max_length = 0.0
-    max_width = 0.0
-    total_height = 0.0
+    if not order_items:
+        raise ValueError("No order items found")
+
+    total_dead_weight = Decimal("0.0")
+    max_length = Decimal("0.0")
+    max_width = Decimal("0.0")
+    total_height = Decimal("0.0")
+
+    breakdown = []
 
     for item in order_items:
         product = item.product
         qty = item.quantity
+
+        if not product:
+            raise ValueError("Product missing in order item")
+
+        if qty <= 0:
+            raise ValueError(f"Invalid quantity for {product.product_name}")
 
         if not all([
             product.weight,
@@ -444,28 +591,45 @@ def calculate_shipment_from_products(order_items):
                 f"Missing dimensions for product: {product.product_name}"
             )
 
-        total_dead_weight += float(product.weight) * qty
-        max_length = max(max_length, float(product.length))
-        max_width = max(max_width, float(product.width))
-        total_height += float(product.height) * qty
+        weight = Decimal(product.weight)
+        length = Decimal(product.length)
+        width = Decimal(product.width)
+        height = Decimal(product.height)
 
-    # Packing buffer
-    max_length += 2
-    max_width += 2
-    total_height += 2
+        total_dead_weight += weight * qty
+        max_length = max(max_length, length)
+        max_width = max(max_width, width)
+        total_height += height * qty
+
+        breakdown.append({
+            "product": product.product_name,
+            "qty": qty,
+            "weight": float(weight),
+            "dimensions": f"{length}x{width}x{height}"
+        })
+
+    # 📦 Packing buffer
+    max_length += PACKING_BUFFER_CM
+    max_width += PACKING_BUFFER_CM
+    total_height += PACKING_BUFFER_CM
 
     volumetric_weight = (
         max_length * max_width * total_height
-    ) / 5000
+    ) / Decimal(VOLUMETRIC_DIVISOR)
 
     chargeable_weight = max(total_dead_weight, volumetric_weight)
 
     return {
-        "shipment_weight": round(total_dead_weight, 2),
-        "shipment_length": round(max_length, 2),
-        "shipment_width": round(max_width, 2),
-        "shipment_height": round(total_height, 2),
-        "shipment_chargeable_weight": round(chargeable_weight, 2),
+        "shipment_weight": float(total_dead_weight.quantize(Decimal("0.01"))),
+        "shipment_length": float(max_length.quantize(Decimal("0.01"))),
+        "shipment_width": float(max_width.quantize(Decimal("0.01"))),
+        "shipment_height": float(total_height.quantize(Decimal("0.01"))),
+        "shipment_chargeable_weight": float(chargeable_weight.quantize(Decimal("0.01"))),
+        "calculation_meta": {
+            "volumetric_divisor": VOLUMETRIC_DIVISOR,
+            "packing_buffer_cm": PACKING_BUFFER_CM,
+            "items": breakdown
+        }
     }
 
 
@@ -488,6 +652,7 @@ async def track_awb(self, db: AsyncSession, awb: str):
             "expected_delivery": "2025-01-14"
         }
     }
+
 
 
 

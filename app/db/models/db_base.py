@@ -358,7 +358,9 @@ class Order(Base):
     )
 
     shipping_address = Column(JSON, nullable=False)
-    shipping_details = Column(JSON, nullable=True)
+    shipping_details = Column(JSON, nullable=True) 
+    final_shipping_details = Column(JSON, nullable=True) 
+    payload = Column(JSON, nullable=True) 
 
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, onupdate=func.now())
@@ -448,13 +450,18 @@ class OrderShipment(Base):
     bigship_courier_id = Column(Integer, nullable=True)
     courier_name = Column(String(100), nullable=True)
 
+    preferred_courier_id = Column(Integer, nullable=True)  # user-selected
+    final_courier_id = Column(Integer, nullable=True) 
+
     # BigShip IDs
     bigship_system_order_id = Column(String(255), index=True, nullable=True)
     bigship_master_awb = Column(String(255), index=True, nullable=True)
 
     manifest_status = Column(
         String(50),
-        default="pending"  # pending → created → manifested → cancelled
+        default="draft",
+        nullable=False
+        # default="pending"  # pending → created → manifested → cancelled
     )
 
     # Docs
@@ -478,8 +485,6 @@ class OrderShipment(Base):
 
     tracking_raw_response = Column(JSON, nullable=True)
 
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    updated_at = Column(TIMESTAMP, onupdate=func.now())
 
 
 # class Courses(Base):

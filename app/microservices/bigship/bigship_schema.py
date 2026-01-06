@@ -89,7 +89,7 @@ class AddSingleOrderPayload(BaseModel):
 class CalculateRatesPayload(BaseModel):
     shipment_category: NonEmptyStr
     payment_type: NonEmptyStr
-    pickup_pincode: int
+    pickup_pincode: int = 410206
     destination_pincode: int
     shipment_invoice_amount: float
     risk_type: Optional[str] = ""

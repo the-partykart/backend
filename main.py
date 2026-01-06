@@ -23,9 +23,9 @@ class ProxyHeadersMiddleware(BaseHTTPMiddleware):
 from app.microservices.users.users_routes import router_v1 as users_router
 from app.microservices.products.products_routes import router_v1 as products_router
 from app.microservices.category.category_routes import router_v1 as category_router
-from app.microservices.offers.offers_routes import router_v1 as offers_router
-from app.microservices.promocodes.promocodes_routes import router_v1 as promocodes_router
-from app.microservices.buyed_product.buyed_routes import router_v1 as buyed_router
+# from app.microservices.offers.offers_routes import router_v1 as offers_router
+# from app.microservices.promocodes.promocodes_routes import router_v1 as promocodes_router
+# from app.microservices.buyed_product.buyed_routes import router_v1 as buyed_router
 from app.microservices.order_alert.order_alert_routes import router_v1 as order_alert_router
 from app.microservices.order_place.order_place_routes import router_v1 as place_order
 from app.microservices.courses.courses_routes import router as courses_route
@@ -67,9 +67,9 @@ app.add_middleware(
 app.include_router(users_router)
 app.include_router(products_router)
 app.include_router(category_router)
-app.include_router(offers_router)
-app.include_router(promocodes_router)
-app.include_router(buyed_router)
+# app.include_router(offers_router)
+# app.include_router(promocodes_router)
+# app.include_router(buyed_router)
 app.include_router(order_alert_router)
 app.include_router(place_order)
 app.include_router(courses_route)

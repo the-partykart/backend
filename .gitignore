@@ -111,3 +111,5 @@ __pypackages__/
 pip-wheel-metadata/
 
 config/
+
+config.py

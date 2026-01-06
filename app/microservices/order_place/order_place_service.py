@@ -84,7 +84,7 @@ async def create_order(
         delivery_status="Pending",
         shipping_address=data.shipping_address,
         shipping_details=data.shipping_details.model_dump(),
-
+        final_shipping_details=data.shipping_details.model_dump(),
     )
     session.add(order)
     await session.flush()  # ✅ ensures order_id is available

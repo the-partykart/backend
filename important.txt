@@ -3,3 +3,9 @@
     api_key = 755836139361584
     api_secret = Ki5JoMVlEUVjxfZr0EJj4JvOy3A
     secure = True
+
+
+
+pip install xlrd>=2.0.1
+
+pip install pymysql

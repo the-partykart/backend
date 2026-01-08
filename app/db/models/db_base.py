@@ -76,9 +76,12 @@ class Products(Base):
     __tablename__ = "pk_products"
 
     product_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    marg_product_code = Column(String(50), unique=True, index=True, nullable=False)
+    last_marg_sync_at = Column(DateTime, nullable=True)
+    is_active_in_marg = Column(Boolean, default=True)
     product_name = Column(String(100), nullable=False, index=True)
-    product_price = Column(Integer, nullable=False)
-    product_full_price = Column(Integer, nullable=True, default=None)
+    product_price = Column(Integer, nullable=False,comment="marg sales price")
+    product_full_price = Column(Integer, nullable=True, default=None, comment="marg mrp")
     product_description = Column(Text(2000), nullable=True)
     product_image = Column(JSON, nullable=True)
     sub_category_id = Column(Integer, ForeignKey("pk_sub_category.sub_category_id"), nullable=True, index=True)

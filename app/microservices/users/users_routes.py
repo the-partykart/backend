@@ -2,22 +2,28 @@
 # All user related CRUD operations
 # '''
 
+import asyncio
+import os
+import shutil
+import tempfile
 from types import SimpleNamespace
 from urllib.parse import quote_plus
-from fastapi import FastAPI, Depends, BackgroundTasks, status
+from fastapi import FastAPI, Depends, BackgroundTasks, File, Form, UploadFile, status
 from fastapi import HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta, timezone
 import sys
+from sqlalchemy import create_engine
 import uvicorn
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.db_session import get_async_session
+from app.db.db_session import get_async_session, get_async_session_context
 from app.db.models.db_base import Users
 from app.db.services.roles_repository import check_roles, check_superadmin, master_role
 from app.db.services.users_repository import  check_phone_no_db, get_user_by_id_db
 from app.microservices.common_function import User, get_current_role, get_current_user, object_to_dict
+from app.microservices.users.marg_sync_service import sync_products_from_marg_excel
 from app.microservices.users.users_schema import Login, UpdateUserDetails, UserCreate
 from app.microservices.users.users_service import check_phone_no_service, check_username_service, create_user_logic, delete_user_service, fetch_all_information_service, fetch_all_users_service, update_user_service
 from app.utility.auth_utils import create_access_token, generate_password_from_number, verify_passwords
@@ -502,7 +508,190 @@ async def check_all_information_db(
         raise HTTPException(status_code=404, detail="Error in get all information")
 
 
+
+
+
+
+
+
+
+
+
+
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from contextlib import asynccontextmanager
+from urllib.parse import quote_plus
+from config.config import settings
+
+# ✅ Database configuration (from .env / settings)
+db_name = settings.db_name
+db_drivername = settings.db_drivername  # usually 'asyncmy'
+db_username = settings.db_username
+db_password = settings.db_password
+db_port = settings.db_port
+db_database_name = settings.db_database_name
+db_server = settings.db_server
+
+print("Driver:", db_drivername)
+print("User:", db_username)
+print("Password:", db_password)
+print("Host:", db_server)
+print("Port:", db_port)
+print("DB:", db_database_name)
+
+
+
+# ✅ Build the async MySQL connection URL
+DB_URL = f"mysql+{db_drivername}://{db_username}:{db_password}@{db_server}:{db_port}/{db_database_name}"
+
+
+print("FINAL URL:", DB_URL)
+
+
+# DB_URL = "mysql+asyncmy://root:root@localhost:3306/pk"
+
+
+# ✅ Create async engine with connection pooling
+async_engine = create_async_engine(
+    DB_URL,
+    echo=False,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=600,   # Recycle connections every 10 min
+    pool_pre_ping=True,
+    future=True
+)
+
+from sqlalchemy.orm import sessionmaker, Session
+
+
+# @router_v1.post("/data-dump")
+# async def data_dump(
+#     file: UploadFile = File(...),
+#     sync_password: str = Form(...),
+# ):
+    
+#     engine = create_engine(DB_URL, pool_pre_ping=True)
+
+#     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+#     def get_db() -> Session:
+#         db = SessionLocal()
+#         try:
+#             yield db
+#         finally:
+#             db.close()
+
+
+#     if not file.filename:
+#         raise HTTPException(status_code=400, detail="File missing")
+
+#     if not file.filename.lower().endswith((".xls", ".xlsx")):
+#         raise HTTPException(status_code=400, detail="Invalid Excel file")
+
+#     temp_dir = tempfile.mkdtemp()
+#     file_path = os.path.join(temp_dir, file.filename)
+
+#     try:
+#         with open(file_path, "wb") as buffer:
+#             shutil.copyfileobj(file.file, buffer)
+
+#         result = sync_products_from_marg_excel(
+#             db=db,
+#             file_path=file_path,
+#             sync_password=sync_password,
+#             system_user_id=None
+#         )
+
+#         return {
+#             "status": "success",
+#             "message": "Marg data synced successfully",
+#             "result": result
+#         }
+
+#     except PermissionError as e:
+#         raise HTTPException(status_code=401, detail=str(e))
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+#     finally:
+#         try:
+#             file.file.close()
+#             os.remove(file_path)
+#             os.rmdir(temp_dir)
+#         except Exception:
+#             pass
+
+import os
+import shutil
+import tempfile
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from app.db.db_session import SessionLocal
+from app.microservices.users.marg_sync_service import sync_products_from_marg_excel
+
+
+@router_v1.post("/data-dump")
+async def data_dump(
+    file: UploadFile = File(...),
+    sync_password: str = Form(...)
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File missing")
+
+    if not file.filename.lower().endswith((".xls", ".xlsx")):
+        raise HTTPException(status_code=400, detail="Invalid Excel file")
+
+    temp_dir = tempfile.mkdtemp()
+    file_path = os.path.join(temp_dir, file.filename)
+
+    db = SessionLocal()
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        result = sync_products_from_marg_excel(
+            db=db,
+            file_path=file_path,
+            sync_password=sync_password,
+            system_user_id=None
+        )
+
+        return {
+            "status": "success",
+            "message": "Marg data synced successfully",
+            "result": result
+        }
+
+    except PermissionError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+        file.file.close()
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+
+
+# async def main():
+#     async with get_async_session_context() as session:
+#         await data_dump(
+#             file="stock_51.xls",
+#             session=session,
+#             sync_password = "MARG_SYNC_123"
+#         )
+        
+
 app.include_router(router_v1)
 
 # if __name__ == "__main__":
+    # asyncio.run(main())
     # uvicorn.run("app.microservices.users.users_routes:app", host="localhost", port=9000, reload=True)

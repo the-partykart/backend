@@ -142,3 +142,28 @@ async def get_async_session_context():
             yield session
         finally:
             await session.close()
+
+
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+
+
+SYNC_DB_URL = (
+    f"mysql+pymysql://"
+    f"{db_username}:{db_password}@{db_server}:{db_port}/{db_database_name}"
+)
+
+sync_engine = create_engine(
+    SYNC_DB_URL,
+    pool_pre_ping=True,
+    future=True
+)
+
+SessionLocal = sessionmaker(
+    bind=sync_engine,
+    autoflush=False,
+    autocommit=False
+)
+

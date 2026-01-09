@@ -1,7 +1,11 @@
 from datetime import datetime
+import os
+import shutil
 import pandas as pd
 from sqlalchemy.orm import Session
+from app.db.db_session import SessionLocal
 from app.db.models.db_base import Products
+from utility.logging_utils import log
 from config.config import settings
 
 
@@ -136,17 +140,24 @@ def sync_products_from_marg_excel(
 
 
 
+
 def run_marg_sync_job(file_path: str, sync_password: str):
     db = SessionLocal()
     try:
-        sync_products_from_marg_excel(
+        log.info(f"Marg sync started for file: {file_path}")
+
+        result = sync_products_from_marg_excel(
             db=db,
             file_path=file_path,
             sync_password=sync_password,
             system_user_id=None
         )
+
+        log.info(f"Marg sync completed: {result}")
+
     except Exception as e:
-        print("SYNC FAILED:", e)
+        log.error(f"Marg sync FAILED for file {file_path}: {e}")
+
     finally:
         db.close()
         shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)

@@ -698,7 +698,8 @@ async def data_dump(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # 🔥 Run heavy job in background
+    file.file.close()  # ✅ IMPORTANT
+
     background_tasks.add_task(
         run_marg_sync_job,
         file_path,

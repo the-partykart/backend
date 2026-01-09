@@ -88,8 +88,12 @@ async def get_all_category_service(
             background_tasks=background_tasks
             )
         
-        if result is None or len(result)<1:
-            return None
+        # Guard against wrong return type
+        if not result:
+            return []
+
+        if isinstance(result, bool):
+            raise ValueError("DB function returned bool instead of list")
         
         if result:
             data = [await object_to_dict(result_data) for result_data in result]

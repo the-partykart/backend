@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from app.db.db_session import SessionLocal
 from app.db.models.db_base import Products
-from utility.logging_utils import log
+from app.utility.logging_utils import log
 from config.config import settings
 
 

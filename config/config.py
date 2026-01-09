@@ -33,6 +33,36 @@ class Settings(BaseSettings):
 
     AZURE_STORAGE_CONNECTION_STRING : str
 
+    GMAIL_USER : str
+    GMAIL_APP_PASSWORD : str
+
+    BIGSHIP_BASE_URL : str
+    BIGSHIP_USERNAME : str
+    BIGSHIP_PASSWORD : str
+    BIGSHIP_ACCESS_KEY : str
+ 
+    BIGSHIP_WAREHOUSE_ID : int
+
+    BIGSHIP_PICKUP_LOCATION_ID : int
+    BIGSHIP_RETURN_LOCATION_ID : int
+
+    RATE_LIMIT_SLEEP : float
+
+    BASE_URL :str
+    USERNAME : str
+    PASSWORD : str
+    ACCESS_KEY : str
+
+
+    PAYTM_ENV : str
+    PAYTM_MID : str
+    PAYTM_MERCHANT_KEY : str
+    PAYTM_WEBSITE : str
+    PAYTM_CALLBACK_URL : str
+
+    PAYTM_FORCE_SUCCESS : str
+
+
     class Config:
         env_file = ".env"
         case_sensitive = False

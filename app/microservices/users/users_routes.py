@@ -700,7 +700,7 @@ async def data_dump(
 
     file.file.close()  # ✅ IMPORTANT
 
-    background_tasks.add_task(
+    background_tasks.add_task( 
         run_marg_sync_job,
         file_path,
         sync_password

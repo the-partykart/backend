@@ -1,6 +1,9 @@
 from datetime import datetime
+import os
+import shutil
 import pandas as pd
 from sqlalchemy.orm import Session
+from app.db.db_session import SessionLocal
 from app.db.models.db_base import Products
 from config.config import settings
 

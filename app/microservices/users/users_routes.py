@@ -23,7 +23,7 @@ from app.db.models.db_base import Users
 from app.db.services.roles_repository import check_roles, check_superadmin, master_role
 from app.db.services.users_repository import  check_phone_no_db, get_user_by_id_db
 from app.microservices.common_function import User, get_current_role, get_current_user, object_to_dict
-from app.microservices.users.marg_sync_service import sync_products_from_marg_excel
+from app.microservices.users.marg_sync_service import run_marg_sync_job, sync_products_from_marg_excel
 from app.microservices.users.users_schema import Login, UpdateUserDetails, UserCreate
 from app.microservices.users.users_service import check_phone_no_service, check_username_service, create_user_logic, delete_user_service, fetch_all_information_service, fetch_all_users_service, update_user_service
 from app.utility.auth_utils import create_access_token, generate_password_from_number, verify_passwords
@@ -634,49 +634,81 @@ from app.db.db_session import SessionLocal
 from app.microservices.users.marg_sync_service import sync_products_from_marg_excel
 
 
+# @router_v1.post("/data-dump")
+# async def data_dump(
+#     file: UploadFile = File(...),
+#     sync_password: str = Form(...)
+# ):
+#     if not file.filename:
+#         raise HTTPException(status_code=400, detail="File missing")
+
+#     if not file.filename.lower().endswith((".xls", ".xlsx")):
+#         raise HTTPException(status_code=400, detail="Invalid Excel file")
+
+#     temp_dir = tempfile.mkdtemp()
+#     file_path = os.path.join(temp_dir, file.filename)
+
+#     db = SessionLocal()
+
+#     try:
+#         with open(file_path, "wb") as buffer:
+#             shutil.copyfileobj(file.file, buffer)
+
+#         result = sync_products_from_marg_excel(
+#             db=db,
+#             file_path=file_path,
+#             sync_password=sync_password,
+#             system_user_id=None
+#         )
+
+#         return {
+#             "status": "success",
+#             "message": "Marg data synced successfully",
+#             "result": result
+#         }
+
+#     except PermissionError as e:
+#         raise HTTPException(status_code=401, detail=str(e))
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+#     finally:
+#         db.close()
+#         file.file.close()
+#         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+
+
+from fastapi import BackgroundTasks
+
 @router_v1.post("/data-dump")
 async def data_dump(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     sync_password: str = Form(...)
 ):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File missing")
-
     if not file.filename.lower().endswith((".xls", ".xlsx")):
         raise HTTPException(status_code=400, detail="Invalid Excel file")
 
     temp_dir = tempfile.mkdtemp()
     file_path = os.path.join(temp_dir, file.filename)
 
-    db = SessionLocal()
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+    # 🔥 Run heavy job in background
+    background_tasks.add_task(
+        run_marg_sync_job,
+        file_path,
+        sync_password
+    )
 
-        result = sync_products_from_marg_excel(
-            db=db,
-            file_path=file_path,
-            sync_password=sync_password,
-            system_user_id=None
-        )
-
-        return {
-            "status": "success",
-            "message": "Marg data synced successfully",
-            "result": result
-        }
-
-    except PermissionError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        db.close()
-        file.file.close()
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    return {
+        "status": "accepted",
+        "message": "File received, sync started in background"
+    }
 
 
 

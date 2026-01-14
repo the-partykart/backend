@@ -10,6 +10,7 @@ from app.microservices.bill_sample.pdf_service import InvoicePDF
 
 router = APIRouter(prefix="/bill", tags=["Bill"])
 
+
  
 @router.post("/generate-invoice")
 def generate_invoice(data: InvoiceRequest):
@@ -21,7 +22,9 @@ def generate_invoice(data: InvoiceRequest):
     # HEADER
     pdf.add_company_address()
 
-    y, h = pdf.buyer_info(data.buyer_name)
+    # y, h = pdf.buyer_info(data.buyer_name)
+    y, h = pdf.buyer_info(data.buyer_name, data.buyer_address)
+
 
     pdf.bill_details(
         y_top=y,

@@ -6,7 +6,6 @@ import platform
 import subprocess
 from num2words import num2words
 from app.microservices.bill_sample.bill_scema import BillSummary
-from app.microservices.bill_sample.buyer_info import *
 
 
 class InvoicePDF(FPDF):
@@ -65,34 +64,58 @@ class InvoicePDF(FPDF):
         self.multi_cell(w, line_height, address_text)
         self.ln(4)
 
-    def buyer_info(self,name):
-        self.set_font("Helvetica", "", 9)
+    # def buyer_info(self,name):
+    #     self.set_font("Helvetica", "", 9)
 
+    #     self.ln(3)
+
+    #     # buyer details
+    #     buyer_info = all_buyer_info(name)
+
+    #     # define box dimensions
+    #     x = 10
+    #     y = self.get_y()
+    #     w = 90
+    #     line_height = 5
+
+    #     # calculate height
+    #     n_lines = len(self.multi_cell(w, line_height, buyer_info, split_only=True))
+    #     h = n_lines * line_height
+
+    #     # draw box
+    #     self.rect(x, y, w, h)
+
+    #     # insert text
+    #     self.set_xy(x, y)
+    #     self.multi_cell(w, line_height, buyer_info)
+
+    #     # move cursor below box
+    #     # self.set_x(x + w + 3)
+    #     return y,h
+
+
+    def buyer_info(self, name: str, address: str):
+        self.set_font("Helvetica", "", 9)
         self.ln(3)
 
-        # buyer details
-        buyer_info = all_buyer_info(name)
+        buyer_info = (
+            f"M/S: - {name}\n"
+            f"{address}"
+        )
 
-        # define box dimensions
         x = 10
         y = self.get_y()
         w = 90
         line_height = 5
 
-        # calculate height
         n_lines = len(self.multi_cell(w, line_height, buyer_info, split_only=True))
         h = n_lines * line_height
 
-        # draw box
         self.rect(x, y, w, h)
-
-        # insert text
         self.set_xy(x, y)
         self.multi_cell(w, line_height, buyer_info)
 
-        # move cursor below box
-        # self.set_x(x + w + 3)
-        return y,h
+        return y, h
 
 
     def bill_details(
@@ -467,4 +490,5 @@ class InvoicePDF(FPDF):
         self.set_xy(x, y_top + 32)
         self.set_font("Helvetica", "", 10)
         self.cell(80, 6, "Authorised Signature", ln=True, align="L")
+
 

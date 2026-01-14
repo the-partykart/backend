@@ -10,7 +10,7 @@ from app.microservices.bill_sample.pdf_service import InvoicePDF
 
 router = APIRouter(prefix="/bill", tags=["Bill"])
 
-
+ 
 @router.post("/generate-invoice")
 def generate_invoice(data: InvoiceRequest):
 

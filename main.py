@@ -31,6 +31,7 @@ from app.microservices.order_place.order_place_routes import router_v1 as place_
 from app.microservices.courses.courses_routes import router as courses_route
 from app.microservices.bigship.bigship_routes import router_v1 as bigship_route
 from app.microservices.notes.notes_routes import router_v1 as notes_route
+from app.microservices.bill_sample.bill_main import router as bill_route
 
 
 # ✅ Import DB settings
@@ -75,7 +76,7 @@ app.include_router(place_order)
 app.include_router(courses_route)
 app.include_router(bigship_route)
 app.include_router(notes_route)
-
+app.include_router(bill_route)
 
 @app.get("/")
 def root():

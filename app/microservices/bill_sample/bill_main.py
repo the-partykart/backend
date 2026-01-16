@@ -8,7 +8,7 @@ from app.microservices.bill_sample.pdf_service import InvoicePDF
 
 
 
-router = APIRouter(prefix="/bill", tags=["Bill"])
+router = APIRouter(prefix="/v1/bill", tags=["Bill"])
 
 
  
